@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; manifest-src 'none'; form-action 'none'; base-uri 'none'">
+<meta name="referrer" content="no-referrer">
+<title>wf-viewer – visionneuse de workflows (non officielle)</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+<header id="topbar">
+  <button id="btnOpen" type="button" class="primary">Ouvrir dossier…</button>
+  <button id="btnOpenFiles" type="button">Ouvrir fichiers…</button>
+  <button id="btnBack" type="button" title="Précédent (Alt+←)" aria-label="Précédent">◀</button>
+  <button id="btnFwd" type="button" title="Suivant (Alt+→)" aria-label="Suivant">▶</button>
+  <nav id="tabs" role="tablist" aria-label="Vues">
+    <button role="tab" data-tab="detail" type="button">Détail</button>
+    <button role="tab" data-tab="compare" type="button">Comparer</button>
+    <button role="tab" data-tab="analysis" type="button">Analyse</button>
+    <button role="tab" data-tab="quality" type="button">Qualité</button>
+    <button role="tab" data-tab="flow" type="button">Flux</button>
+    <button role="tab" data-tab="calls" type="button">Appels</button>
+    <button role="tab" data-tab="impact" type="button">Impact</button>
+    <button role="tab" data-tab="global" type="button">Global</button>
+  </nav>
+  <label id="expertWrap" class="expert-toggle" title="Raccourci : touche E"><input type="checkbox" id="chkExpert" aria-describedby="expertHint"> <b>Vue expert</b></label><span id="expertHint" class="visually-hidden">Affiche les identifiants, JSON bruts, schémas et détails techniques. Raccourci : touche E.</span>
+  <span id="status" role="status" aria-live="polite"></span>
+  <button id="btnErrors" type="button" hidden class="warn"></button>
+</header>
+<div id="layout">
+  <aside id="sidebar" aria-label="Liste des workflows">
+    <div class="side-tools">
+      <input id="q" type="search" placeholder="Rechercher (nom, GUID, texte des settings)…" aria-label="Rechercher">
+      <div class="row">
+        <select id="fStatus" aria-label="Filtrer par statut"><option value="">Tous statuts</option><option value="Active">Active</option><option value="Inactive">Inactive</option></select>
+        <select id="fSort" aria-label="Trier par"><option value="name">Tri: nom</option><option value="nodes">Tri: nb nodes</option><option value="updated">Tri: date maj</option></select>
+      </div>
+      <label class="small muted" id="qScrWrap" hidden><input id="qScr" type="checkbox"> inclure le texte des scripts PowerShell</label>
+      <div id="usageChip" class="chip" hidden></div>
+      <div class="row small"><span id="count"></span><button id="btnCompare" type="button" disabled>Comparer les 2 cochés</button></div>
+    </div>
+    <ul id="list" tabindex="0" role="listbox" aria-label="Workflows"></ul>
+  </aside>
+  <main id="main" tabindex="-1">
+    <div id="welcome">
+      <h1>Visionneuse de workflows CoreView</h1>
+      <p>Lecture seule. Cliquez sur <b>Ouvrir dossier…</b> (Chrome/Edge) ou glissez-déposez un dossier / des fichiers <code>.json</code> ici.</p>
+      <p class="muted">Tout est traité localement dans le navigateur, rien n'est envoyé.</p>
+    </div>
+  </main>
+</div>
+<footer id="about" role="contentinfo"><span><b>wf-viewer</b> v<span id="appVersion"></span> — 100 % local : les fichiers chargés restent dans votre navigateur, rien n'est envoyé.</span> <span>Projet indépendant, non affilié à CoreView ni à son éditeur ; CoreView est une marque de son propriétaire.</span> <span>Export : format d'import non validé, testez sur un workflow non critique.</span></footer>
+<div id="dropOverlay" hidden>Déposez le dossier ou les fichiers JSON</div>
+<input id="inDir" type="file" multiple webkitdirectory hidden>
+<input id="inFiles" type="file" multiple accept=".json,.ps1,.txt,.csv,application/json" hidden>
+<dialog id="dlg"><div id="dlgBody"></div><form method="dialog"><button>Fermer</button></form></dialog>
+<!-- Scripts classiques (pas de type=module): compatibles file:// -->
+<script src="src/version.js"></script>
+<script src="src/refs.js"></script>
+<script src="src/model.js"></script>
+<script src="src/analysis.js"></script>
+<script src="src/diff.js"></script>
+<script src="src/inputs.js"></script>
+<script src="src/natives.js"></script>
+<script src="src/labels.js"></script>
+<script src="src/pshighlight.js"></script>
+<script src="src/scripts.js"></script>
+<script src="src/loader.js"></script>
+<script src="src/graph.js"></script>
+<script src="src/lint.js"></script>
+<script src="src/edit.js"></script>
+<script src="src/ui.js"></script>
+<script src="src/edit-ui.js"></script>
+<script src="src/insight-ui.js"></script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+{
+    "customActions": [
+        {
+            "id": "00000000-0000-4000-8000-000000000101",
+            "title": "Exemple - Vérifier appartenance",
+            "description": "Action fictive Exemple - Vérifier appartenance",
+            "companyId": "00000000000040008000000000000999",
+            "scriptUri": "https://example.invalid/customactions/00000000-0000-4000-8000-000000000101.ps1",
+            "state": "Published",
+            "lastModified": "2026-01-02T08:00:00.0000000Z",
+            "createdBy": "author@example.com",
+            "target": "User",
+            "tags": [],
+            "vars": [],
+            "params": [
+                {
+                    "name": "UserPrincipalName",
+                    "type": "string",
+                    "isDefault": false
+                }
+            ],
+            "powershellChannels": [],
+            "columns": {
+                "UserPrincipalName": ""
+            },
+            "rejectReasons": [],
+            "version": 3,
+            "md5Sum": "",
+            "usePowerShell7": false
+        },
+        {
+            "id": "00000000-0000-4000-8000-000000000102",
+            "title": "Exemple - Action sans script",
+            "description": "Action fictive Exemple - Action sans script",
+            "companyId": "00000000000040008000000000000999",
+            "scriptUri": "https://example.invalid/customactions/00000000-0000-4000-8000-000000000102.ps1",
+            "state": "UnderReview",
+            "lastModified": "2026-01-02T08:00:00.0000000Z",
+            "createdBy": "author@example.com",
+            "target": "User",
+            "tags": [],
+            "vars": [],
+            "params": [
+                {
+                    "name": "UserPrincipalName",
+                    "type": "string",
+                    "isDefault": false
+                }
+            ],
+            "powershellChannels": [],
+            "columns": {
+                "UserPrincipalName": ""
+            },
+            "rejectReasons": [],
+            "version": 3,
+            "md5Sum": "",
+            "usePowerShell7": false
+        }
+    ],
+    "configs": {},
+    "metadata": {
+        "pageNumber": 1,
+        "pageSize": 2,
+        "pageCount": 2,
+        "totalCount": 3,
+        "links": []
+    },
+    "savedReportInfo": null
+}

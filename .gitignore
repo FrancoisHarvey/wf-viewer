@@ -1,0 +1,21 @@
+# Dépendances et sorties locales
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
+/captures/
+/screenshots/
+/tests/_tmp/
+
+# Données réelles / exports : ne jamais versionner (les chemins ancrés à la racine n'excluent pas fixtures/)
+/wf-details/
+/e4476b*/
+/e4476b*.zip
+/workflows.raw.txt
+/workflow.*.raw.txt
+/customaction*.raw.txt
+/ps7-compat*
+/proposed-fixes/
+/*.ps1
+*.har
+*.zip

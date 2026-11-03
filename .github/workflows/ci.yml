@@ -1,0 +1,55 @@
+name: CI et déploiement GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Tests unitaires (fixtures synthétiques)
+        run: npm test
+      - name: Test navigateur (Chrome headless, via serveur HTTP local)
+        run: WFV_SERVE=1 npm run smoke
+        continue-on-error: true   # dépend du Chrome du runner; non bloquant
+
+  deploy:
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Préparer le site (index.html + src/ + docs/ uniquement; ni tests ni fixtures)
+        run: |
+          mkdir _site
+          cp index.html _site/
+          cp -r src _site/
+          if [ -d docs ]; then cp -r docs _site/; fi
+          touch _site/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
