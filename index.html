@@ -14,6 +14,7 @@
 <header id="topbar">
   <button id="btnOpen" type="button" class="primary">Ouvrir dossier…</button>
   <button id="btnOpenFiles" type="button">Ouvrir fichiers…</button>
+  <button id="btnDemo" type="button" data-demo-load title="Essayer l'outil avec des exemples fictifs, sans aucun fichier">Charger les données démo</button>
   <button id="btnBack" type="button" title="Précédent (Alt+←)" aria-label="Précédent">◀</button>
   <button id="btnFwd" type="button" title="Suivant (Alt+→)" aria-label="Suivant">▶</button>
   <nav id="tabs" role="tablist" aria-label="Vues">
@@ -30,6 +31,7 @@
   <span id="status" role="status" aria-live="polite"></span>
   <button id="btnErrors" type="button" hidden class="warn"></button>
 </header>
+<div id="demoBanner" role="region" aria-label="Données de démonstration" hidden><strong>Données de démonstration (fictives)</strong> <span id="demoCount"></span> <button id="btnTour" type="button">Visite guidée</button> <button id="btnQuitDemo" type="button">Quitter la démo</button></div>
 <div id="layout">
   <aside id="sidebar" aria-label="Liste des workflows">
     <div class="side-tools">
@@ -48,6 +50,7 @@
     <div id="welcome">
       <h1>Visionneuse de workflows CoreView</h1>
       <p>Lecture seule. Cliquez sur <b>Ouvrir dossier…</b> (Chrome/Edge) ou glissez-déposez un dossier / des fichiers <code>.json</code> ici.</p>
+      <p><button type="button" class="primary" id="btnDemoWelcome" data-demo-load>Charger les données démo</button> <small class="muted">pour essayer sans aucun fichier (exemples fictifs)</small></p>
       <p class="muted">Tout est traité localement dans le navigateur, rien n'est envoyé.</p>
     </div>
   </main>
@@ -76,5 +79,8 @@
 <script src="src/edit-ui.js"></script>
 <script src="src/inputs-ui.js"></script>
 <script src="src/insight-ui.js"></script>
+<script src="src/demo-data.js"></script>
+<script src="src/demo-logic.js"></script>
+<script src="src/demo-ui.js"></script>
 </body>
 </html>

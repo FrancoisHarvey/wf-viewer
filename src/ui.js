@@ -6,7 +6,7 @@
   const $ = (id) => document.getElementById(id);
 
   const hooks = {};
-  const S = { hl: lsGet('wfv.psHighlight') !== '0', codeViews: new Set(), scriptFind: '', expert: labels.parseExpert(location.hash, lsGet('wfv.expert')), store: scriptsApi.createStore(), wfs: new Map(), order: [], errors: [], callers: new Map(), global: null,
+  const S = { demoIds: new Set(), demoStore: null, hl: lsGet('wfv.psHighlight') !== '0', codeViews: new Set(), scriptFind: '', expert: labels.parseExpert(location.hash, lsGet('wfv.expert')), store: scriptsApi.createStore(), wfs: new Map(), order: [], errors: [], callers: new Map(), global: null,
     q: '', status: '', sort: 'name', usage: null, checked: [], hlKey: null,
     cmp: { noise: true, onlyDiff: true, mode: 'side' }, gtab: 'types', gq: '' };
 
@@ -168,33 +168,36 @@
 
   // ---------- chargement ----------
   function setStatus(t) { $('status').textContent = t; }
-  async function ingest(items) {
+  async function ingest(items, opts) {
+    opts = opts || {};
     setStatus('Analyse…'); await new Promise((r) => setTimeout(r, 0));
     const readErrors = items.filter((i) => i.readError).map((i) => ({ file: i.name, error: 'Lecture impossible: ' + i.readError }));
     const t0 = performance.now();
     const ok = items.filter((i) => !i.readError);
     const other = ok.filter((i) => { const k = scriptsApi.classifyFile(i.name); return k && k !== 'workflow'; });
     const wfItems = ok.filter((i) => scriptsApi.classifyFile(i.name) === 'workflow');
-    let extra = '';
+    let extra = '', storeAdded = null;
     if (other.length) {
-      const sm = S.store.ingest(other); S.global = null; $('qScrWrap').hidden = !S.store.scripts.size;
+      const snap = opts.demo ? { scripts: new Set(S.store.scripts.keys()), fixes: new Set(S.store.fixes.keys()), actions: new Set(S.store.actions.keys()), ps7: new Set(S.store.ps7.keys()) } : null;
+      const sm = S.store.ingest(other); S.global = null; if (snap) storeAdded = Object.fromEntries(Object.keys(snap).map((k) => [k, [...S.store[k].keys()].filter((x) => !snap[k].has(x))])); $('qScrWrap').hidden = !S.store.scripts.size;
       extra = ' · scripts: ' + S.store.scripts.size + ', custom actions: ' + S.store.actions.size + ', rapports PS7: ' + S.store.ps7.size + (sm.errors.length ? ' (' + sm.errors.length + ' erreur(s))' : '');
       readErrors.push(...sm.errors.map((e) => ({ file: e.file, error: e.error })));
     }
     if (!wfItems.length && other.length && S.wfs.size) { // chargement de scripts seul: on garde les workflows
       S.errors = S.errors.concat(readErrors); setStatus('Scripts/custom actions chargés' + extra); const be0 = $('btnErrors'); be0.hidden = !S.errors.length; be0.textContent = S.errors.length + ' fichier(s) en erreur'; render(); return;
     }
-    if (wfItems.length && S.sessions && [...S.sessions.values()].some((x) => x.wf.dirty) && !window.confirm('Des modifications non exportées seront perdues. Charger de nouveaux workflows ?')) { setStatus('Chargement annulé (modifications non exportées conservées)'); return; }
-    if (wfItems.length && S.sessions) { S.sessions.clear(); S.origs.clear(); S.editing.clear(); }
+    if (!opts.merge && wfItems.length && S.sessions && [...S.sessions.values()].some((x) => x.wf.dirty) && !window.confirm('Des modifications non exportées seront perdues. Charger de nouveaux workflows ?')) { setStatus('Chargement annulé (modifications non exportées conservées)'); return; }
+    if (!opts.merge && wfItems.length && S.sessions) { S.sessions.clear(); S.origs.clear(); S.editing.clear(); }
     const r = model.loadTexts(wfItems);
-    S.wfs = r.workflows; S.errors = readErrors.concat(r.errors);
+    if (!opts.merge) { S.demoIds = new Set(); S.demoStore = null; } const bn = $('demoBanner'); if (bn) bn.hidden = !S.demoIds.size; // un chargement réel non fusionné efface le marquage démo
+    S.wfs = opts.merge ? new Map([...S.wfs, ...r.workflows]) : r.workflows; S.errors = (opts.merge ? S.errors : []).concat(readErrors, r.errors);
     S.callers = model.buildCallers(S.wfs); S.global = null; S.usage = null; S.checked = [];
     S.order = [...S.wfs.values()];
     setStatus(S.wfs.size + ' workflows chargés (' + wfItems.length + ' fichiers .json) en ' + Math.round(performance.now() - t0) + ' ms' + extra);
     const be = $('btnErrors'); be.hidden = !S.errors.length; be.textContent = S.errors.length + ' fichier(s) en erreur';
     const st = hashState(); if (st.wf && !S.wfs.has(st.wf)) location.hash = '';
     renderList(); render();
-    if (!hashState().wf && S.order.length) { /* pas de sélection automatique: l'utilisateur choisit */ }
+    return { ids: [...r.workflows.keys()], storeAdded };
   }
   const progress = (d, n) => setStatus('Lecture ' + d + '/' + n + '…');
   async function guarded(fn) { try { await ingest(await fn()); } catch (e) { if (e && e.name !== 'AbortError') setStatus('Erreur: ' + e.message); } }
@@ -235,7 +238,7 @@
         onclick: (e) => { e.stopPropagation(); toggleCheck(w.id, e.target.checked); } });
       return h('li', { role: 'option', 'aria-selected': w.id === sel ? 'true' : 'false', data: { id: w.id }, onclick: () => setHash({ wf: w.id, tab: hashState().tab === 'compare' ? 'detail' : hashState().tab }) },
         cb, h('div', null, h('div', { class: 'nm', text: w.name }),
-          h('div', { class: 'meta muted' }, h('span', { text: w.nodeCount + ' nodes · ' + fmtDate(w.updated) + ' ' }), w.status === 'Inactive' ? h('span', { class: 'badge inactive', text: 'Inactive' }) : null, w.dirty ? h('span', { class: 'badge mod', title: 'Modifié, non exporté', text: '● modifié' }) : null, hooks.listBadge ? hooks.listBadge(w) : null)));
+          h('div', { class: 'meta muted' }, h('span', { text: w.nodeCount + ' nodes · ' + fmtDate(w.updated) + ' ' }), w.status === 'Inactive' ? h('span', { class: 'badge inactive', text: 'Inactive' }) : null, w.dirty ? h('span', { class: 'badge mod', title: 'Modifié, non exporté', text: '● modifié' }) : null, S.demoIds.has(w.id) ? h('span', { class: 'badge demo', title: 'Exemple fictif (données de démonstration)', text: 'démo' }) : null, hooks.listBadge ? hooks.listBadge(w) : null)));
     }));
     const chip = $('usageChip');
     chip.hidden = !S.usage; chip.replaceChildren();
@@ -657,5 +660,5 @@
   });
   const ver = $('appVersion'); if (ver) ver.textContent = window.WFV.version || '';
   window.WFV.app = { S, render, ingest, setExpert };
-  window.WFV.ui = { codeView, setHl, dual, labels, setExpert, S, h, hooks, render, renderList, setHash, hashState, setStatus, strNode, renderValue, link, short, fmtDate, jumpTo, add, shownIds: () => shownIds, getWf, typeLabel, renderFilter }; // utile pour les tests navigateur
+  window.WFV.ui = { ingest, codeView, setHl, dual, labels, setExpert, S, h, hooks, render, renderList, setHash, hashState, setStatus, strNode, renderValue, link, short, fmtDate, jumpTo, add, shownIds: () => shownIds, getWf, typeLabel, renderFilter }; // utile pour les tests navigateur
 })();

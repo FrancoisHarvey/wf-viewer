@@ -239,3 +239,12 @@ table.inputs-edit input[type=text], table.inputs-edit select { min-width: 7em; m
 .enumlist { max-height: 40vh; overflow: auto; border: 1px solid var(--border); margin: 4px 0; } .enumrow { display: flex; gap: 4px; align-items: center; padding: 1px 4px; } .enumval { flex: 1; min-width: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 1px 4px; }
 .uncertain { font-size: 11px; color: var(--modfg); } details.adv > summary { cursor: pointer; font-size: 11px; color: var(--muted); }
 .inl { display: inline-flex; gap: 4px; font-size: 12px; align-items: center; }
+
+/* démo */
+#demoBanner { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; padding: 4px 10px; background: var(--sys-bg); color: var(--sys-fg); border-bottom: 1px solid var(--border); font-size: 12px; }
+#demoBanner[hidden] { display: none; }
+.badge.demo { background: var(--sys-bg); color: var(--sys-fg); border-color: transparent; font-weight: 600; }
+.tour { position: fixed; right: 14px; bottom: 44px; width: min(380px, calc(100vw - 28px)); z-index: 20; background: var(--panel); color: var(--fg); border: 2px solid var(--accent); border-radius: 8px; padding: 10px 12px; box-shadow: 0 4px 18px rgba(0, 0, 0, .35); }
+.tour h3 { margin: 0; font-size: 14px; } .tourhead { display: flex; justify-content: space-between; align-items: center; gap: 8px; } .tour p { margin: 6px 0; } .tourfoot { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; } .tourfoot .muted { margin-right: auto; }
+.tour:focus { outline: 2px solid var(--focus); }
+.tour-target { outline: 3px solid var(--focus) !important; outline-offset: 2px; }

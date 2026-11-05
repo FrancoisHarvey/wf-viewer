@@ -1,6 +1,6 @@
 {
   "name": "wf-viewer",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Visionneuse locale de workflows (JSON): navigation, comparaison, analyse, scripts PowerShell, edition. Projet independant.",
   "license": "MIT",
   "private": true,
@@ -8,7 +8,8 @@
   "scripts": {
     "test": "node --test tests/*.test.js",
     "smoke": "node tests/browser-smoke.js",
-    "fixtures": "node tools/gen-fixtures.js"
+    "fixtures": "node tools/gen-fixtures.js",
+    "build:demo": "node tools/build-demo.js"
   },
   "engines": { "node": ">=22" }
 }

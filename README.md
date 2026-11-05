@@ -34,6 +34,10 @@
 | **Édition des inputs** | Éditeur tabulaire intégré à la section Inputs (mode édition, vues de base et expert) : ajouter, supprimer, dupliquer, réordonner (boutons ou glisser-déposer), renommer avec propagation aux références `{{input::…}}` (aperçu du nombre de références et avertissements), éditer titre / description / requis / infobulle / valeur par défaut, changer le **type** par catégorie (texte, liste de valeurs, Oui/Non, booléen, nombre entier, date-heure, mot de passe, cible, source de données, liste personnalisée) en conservant les clés inconnues et en signalant les données perdues, éditeur de valeurs de liste (ajout, suppression, ordre, collage multi-lignes, dédoublonnage, tri, recherche; plus de 1000 valeurs sans blocage), règles de mot de passe, suggestions de sources/listes déjà vues, copie d'inputs vers un autre workflow (ignorer / renommer / écraser). JSON brut de l'input en vue expert. Tout passe par le moteur d'édition (annuler/rétablir, validation, export fidèle). Les formes de schéma proviennent de la structure des exports observés ; celles marquées « partiellement déduites » (Oui/Non, règles de mot de passe) sont signalées dans l'interface. |
 | **Vue de base / expert** | Case « Vue expert » (touche `E`) : la vue de base masque identifiants, JSON bruts et schémas techniques ; la vue expert montre tout. État conservé et partageable (`x=1` dans l'URL). |
 
+## Essayer sans fichier : données de démonstration
+
+Bouton **Charger les données démo** (écran d'accueil et barre du haut) : charge des workflows, scripts PowerShell, custom actions et un rapport PS7 **entièrement fictifs**, comme si vous les aviez choisis vous-même (mêmes contrôles, mêmes index, export fidèle). Les données sont embarquées dans `src/demo-data.js` (aucune requête réseau, CSP inchangée). Un bandeau « Données de démonstration (fictives) » reste affiché avec **Visite guidée** (liste, détail, comparaison d'un duplicata, Qualité, vue expert, édition et éditeur d'inputs ; navigation ←/→, Échap pour fermer) et **Quitter la démo**. Si vos propres fichiers sont déjà chargés, l'outil demande de **remplacer** ou d'**ajouter** ; les exemples portent un badge « démo ». L'export d'un exemple reste possible (il est signalé « exemple fictif »).
+
 ## Utilisation
 
 1. Ouvrez `index.html` (double-clic, `file://`) ou la page publiée sur GitHub Pages.
@@ -67,6 +71,7 @@ L'export produit un fichier JSON dans le même style que l'original, mais **le f
 index.html            page unique (CSP stricte, pied de page, version)
 src/                  modules JavaScript « classiques » (UMD) + style.css
   version.js          constante de version unique
+  demo-data.js        données de démo générées depuis fixtures/ (npm run build:demo) ; demo-logic.js demo-ui.js
   model.js refs.js diff.js analysis.js inputs.js natives.js labels.js   modèle, références, diff, analyse
   scripts.js pshighlight.js                                             scripts PowerShell, coloration
   graph.js lint.js edit.js                                              graphes, linter, édition/export
@@ -89,6 +94,7 @@ npm run smoke                     # test navigateur (Chrome/Edge local, headless
 WFV_SERVE=1 npm run smoke         # idem via un petit serveur HTTP local (127.0.0.1)
 WFV_DATA=/chemin/vers/mes/donnees npm test   # tests sur un autre dossier (les comptes attendus sont ceux des fixtures)
 npm run fixtures                  # régénère fixtures/
+npm run build:demo                # régénère src/demo-data.js depuis fixtures/ (un test vérifie qu'il est à jour)
 ```
 
 Le test navigateur détecte Edge/Chrome ou prend un chemin en argument (`node tests/browser-smoke.js /chemin/chrome`, ou `WFV_BROWSER`) ; il s'ignore proprement s'il n'en trouve pas. Il échoue sur toute erreur console, exception ou violation de la politique CSP.

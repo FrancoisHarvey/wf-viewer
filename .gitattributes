@@ -1,3 +1,5 @@
 # Les fixtures doivent rester identiques octet pour octet (tests d export fidele): pas de conversion de fins de ligne.
 fixtures/** -text
 *.png binary
+# demo-data.js est généré (LF): pas de conversion de fins de ligne
+src/demo-data.js -text

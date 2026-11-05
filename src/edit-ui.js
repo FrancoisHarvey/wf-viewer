@@ -284,6 +284,7 @@
     const dirtyAll = [...S.sessions.keys()].filter(dirtyOf);
     const body = h('div', null,
       h('p', { class: 'warnnote', text: WARN }),
+      S.demoIds && S.demoIds.has(wf.id) ? h('p', { class: 'warnnote', id: 'demoExportNote', text: 'Exemple fictif : ce workflow de démonstration n\'est pas un vrai workflow (export possible pour tester uniquement).' }) : null,
       h('p', null, h('b', { text: cur.name }), ' — ', dirty ? h('span', { class: 'badge mod', text: '● modifié' }) : h('span', { class: 'badge', text: 'inchangé (l\'export sera identique octet pour octet au fichier d\'origine)' })),
       h('div', { class: 'summary' }, h('span', { class: 'badge add', text: sm.added + ' node(s) ajouté(s)' }), h('span', { class: 'badge del', text: sm.removed + ' supprimé(s)' }), h('span', { class: 'badge mod', text: sm.modified + ' modifié(s)' }), h('span', { class: 'badge', text: dres.header.length + ' diff. d\'en-tête' }), dres.inputs ? h('span', { class: 'badge', text: dres.inputs.changed + ' input(s)' }) : null),
       h('button', { type: 'button', id: 'btnFullDiff', text: 'Voir le diff complet (original → modifié)', onclick: () => { dlg.close(); U.setHash({ wf: 'orig:' + wf.id, cmp: wf.id, tab: 'compare' }); } }),
