@@ -1,6 +1,6 @@
 {
   "name": "wf-viewer",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Visionneuse locale de workflows (JSON): navigation, comparaison, analyse, scripts PowerShell, edition. Projet independant.",
   "license": "MIT",
   "private": true,

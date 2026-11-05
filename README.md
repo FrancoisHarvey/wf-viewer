@@ -8,6 +8,8 @@
 
 ![Détail d'un workflow (données fictives)](docs/detail-base.png)
 
+![Éditeur d'inputs (données fictives)](docs/inputs-editor.png)
+
 ## Confidentialité
 
 - **100 % local** : les fichiers que vous chargez restent dans votre navigateur ; rien n'est envoyé nulle part. Le code ne contient aucune requête réseau (pas de `fetch`, pas de CDN, pas de police ni de script externe).
@@ -29,6 +31,7 @@
 | **Impact** | Pour une custom action, une variable ou une fonction : workflows et nodes concernés, impact transitif via les appels imbriqués, export Markdown. |
 | **Scripts PowerShell** | Panneau de script par custom action avec coloration syntaxique (tokenizer maison, hors-ligne), arguments passés vs `param()`, recherche dans le texte des scripts, statut du rapport de compatibilité PS7. |
 | **Édition et export** | Mode édition explicite par workflow : nom/description/statut, valeur de setting, rechercher/remplacer structuré avec aperçu, remplacement de fonction ou de type d'action, renommage d'un input partout, supprimer/dupliquer/déplacer un node, annuler/rétablir. Un workflow non modifié se réexporte **identique octet pour octet**. |
+| **Édition des inputs** | Éditeur tabulaire intégré à la section Inputs (mode édition, vues de base et expert) : ajouter, supprimer, dupliquer, réordonner (boutons ou glisser-déposer), renommer avec propagation aux références `{{input::…}}` (aperçu du nombre de références et avertissements), éditer titre / description / requis / infobulle / valeur par défaut, changer le **type** par catégorie (texte, liste de valeurs, Oui/Non, booléen, nombre entier, date-heure, mot de passe, cible, source de données, liste personnalisée) en conservant les clés inconnues et en signalant les données perdues, éditeur de valeurs de liste (ajout, suppression, ordre, collage multi-lignes, dédoublonnage, tri, recherche; plus de 1000 valeurs sans blocage), règles de mot de passe, suggestions de sources/listes déjà vues, copie d'inputs vers un autre workflow (ignorer / renommer / écraser). JSON brut de l'input en vue expert. Tout passe par le moteur d'édition (annuler/rétablir, validation, export fidèle). Les formes de schéma proviennent de la structure des exports observés ; celles marquées « partiellement déduites » (Oui/Non, règles de mot de passe) sont signalées dans l'interface. |
 | **Vue de base / expert** | Case « Vue expert » (touche `E`) : la vue de base masque identifiants, JSON bruts et schémas techniques ; la vue expert montre tout. État conservé et partageable (`x=1` dans l'URL). |
 
 ## Utilisation
@@ -67,7 +70,7 @@ src/                  modules JavaScript « classiques » (UMD) + style.css
   model.js refs.js diff.js analysis.js inputs.js natives.js labels.js   modèle, références, diff, analyse
   scripts.js pshighlight.js                                             scripts PowerShell, coloration
   graph.js lint.js edit.js                                              graphes, linter, édition/export
-  ui.js edit-ui.js insight-ui.js loader.js                              interface (DOM, textContent uniquement)
+  ui.js edit-ui.js inputs-ui.js insight-ui.js loader.js                 interface (DOM, textContent uniquement)
 fixtures/             jeu de données FICTIF (workflows, scripts, custom actions, CSV PS7)
 tools/gen-fixtures.js génère fixtures/ (valeurs inventées)
 tests/                tests node + test navigateur

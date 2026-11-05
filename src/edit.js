@@ -7,7 +7,7 @@
 (function (root) {
   'use strict';
   var req = function (n) { return typeof require === 'function' ? require('./' + n + '.js') : root.WFV[n]; };
-  var model = req('model'), refs = req('refs'), analysis = req('analysis');
+  var model = req('model'), refs = req('refs'), analysis = req('analysis'), inputsApi = req('inputs');
 
   var CATALOG_KEYS = ['inputSchema', 'successOutputSchema', 'failureOutputSchema', 'categoryId', 'categoryName', 'categoryIcon', 'categoryItemId', 'categoryItemName', 'categoryItemIcon', 'providerId', 'providerName', 'providerIcon', 'source', 'fragmentId'];
   var clone = function (o) { return JSON.parse(JSON.stringify(o)); };
@@ -333,13 +333,170 @@
     var broken = a.broken.map(function (b) { return { key: (b.node ? b.node.uid : 'wf') + '|' + b.token.raw + '|' + b.reason.replace(/\(.*\)/, ''), reason: b.reason, node: b.node ? b.node.name : '(workflow)', uid: b.node ? b.node.uid : null, where: b.where, token: b.token.raw }; });
     a.malformed.forEach(function (m) { warnings.push('token mal formé: ' + m.token.raw); });
     try { JSON.parse(JSON.stringify(d)); } catch (e) { errors.push('JSON non sérialisable'); }
+    validateInputs(d, errors, warnings);
     return { errors: errors, warnings: warnings, broken: broken, nodeCount: wf.nodeCount };
+  }
+
+
+  // ---------- éditeur d'inputs (inputSchema.properties) ----------
+  // Toutes les opérations ré-encodent inputSchema (double-encodé) UNIQUEMENT s'il change, dans le style d'espacement d'origine; ordre des clés et clés inconnues conservés.
+  function schemaOf(d) {
+    if (typeof d.inputSchema !== 'string') return { error: 'inputSchema absent ou non encodé' };
+    var s; try { s = JSON.parse(d.inputSchema); } catch (e) { return { error: 'inputSchema illisible (JSON invalide)' }; }
+    if (!isObj(s)) return { error: 'inputSchema inattendu' };
+    if (s.properties === undefined) s.properties = {}; if (!isObj(s.properties)) return { error: 'inputSchema.properties inattendu' };
+    return { s: s };
+  }
+  function saveSchema(d, s) { d.inputSchema = encodeLike(d.inputSchema, s); }
+  function reorder(props, names) { var o = {}; names.forEach(function (k) { o[k] = props[k]; }); return o; }
+  function countInputRefs(d, name) {
+    var wf = model.buildWorkflow(d, 'x', '', null), c = 0;
+    model.allTokens(wf).forEach(function (o) { var t = o.token; if (t.kind === 'input' && !t.malformed && t.stepUid === 'input-stepUid' && t.param === name) c++; });
+    return c;
+  }
+  function withInput(d, name, fn) {
+    var r = schemaOf(d); if (r.error) return { ok: false, error: r.error };
+    if (!Object.prototype.hasOwnProperty.call(r.s.properties, name)) return { ok: false, error: 'input inexistant: ' + name };
+    var res = fn(r.s, r.s.properties[name]); if (!res || !res.ok) return res || { ok: false, error: 'opération invalide' };
+    saveSchema(d, r.s); return res;
+  }
+  function setRequired(s, name, on) {
+    var req = Array.isArray(s.required) ? s.required.slice() : [], i = req.indexOf(name);
+    if (on && i < 0) req.push(name); if (!on && i >= 0) req.splice(i, 1);
+    if (Array.isArray(s.required) || req.length || on) s.required = req;
+  }
+  // opts: {name, kind, targetType, required, title, description, after, values, customList, dataSource, filterable}
+  function addInput(d, o) {
+    var r = schemaOf(d); if (r.error) return { ok: false, error: r.error }; o = o || {};
+    var v = inputsApi.validateName(o.name, r.s.properties, null); if (v.error) return { ok: false, error: v.error };
+    var np = inputsApi.newProp(o.kind || 'text', { title: o.title != null ? o.title : o.name, description: o.description, targetType: o.targetType, values: o.values, customList: o.customList, dataSource: o.dataSource, filterable: o.filterable });
+    if (np.error) return { ok: false, error: np.error };
+    var names = Object.keys(r.s.properties), at = o.after && names.indexOf(o.after) >= 0 ? names.indexOf(o.after) + 1 : names.length, props = Object.assign({}, r.s.properties); props[o.name] = np.prop;
+    names.splice(at, 0, o.name); r.s.properties = reorder(props, names); if (o.required) setRequired(r.s, o.name, true); saveSchema(d, r.s);
+    var w = v.warning ? [v.warning] : []; if (np.needs) w.push('à compléter: ' + ({ enum: 'valeurs de la liste', customList: 'identifiant de liste personnalisée', dataSource: 'source de données' })[np.needs]);
+    return { ok: true, warnings: w, needs: np.needs };
+  }
+  function deleteInput(d, name) {
+    return withInput(d, name, function (s) {
+      var refsN = countInputRefs(d, name), props = Object.assign({}, s.properties); delete props[name]; s.properties = props; setRequired(s, name, false);
+      return { ok: true, warnings: refsN ? [refsN + ' référence(s) {{input::…::' + name + '::…}} resteront dans les nodes et pointeront vers un input supprimé'] : [], references: refsN };
+    });
+  }
+  function duplicateInput(d, name, newName) {
+    return withInput(d, name, function (s, prop) {
+      var nn = newName; if (!nn) { nn = name + '_copie'; for (var i = 2; Object.keys(s.properties).some(function (k) { return k.toLowerCase() === nn.toLowerCase(); }); i++) nn = name + '_copie' + i; }
+      var v = inputsApi.validateName(nn, s.properties, null); if (v.error) return { ok: false, error: v.error };
+      var cp = JSON.parse(JSON.stringify(prop)); if (cp.title === name) cp.title = nn;
+      var names = Object.keys(s.properties), props = Object.assign({}, s.properties); props[nn] = cp; names.splice(names.indexOf(name) + 1, 0, nn); s.properties = reorder(props, names);
+      if (Array.isArray(s.required) && s.required.indexOf(name) >= 0) setRequired(s, nn, true);
+      return { ok: true, newName: nn, warnings: v.warning ? [v.warning] : [] };
+    });
+  }
+  // spec: {dir:'up'|'down'} ou {to: index}
+  function moveInput(d, name, spec) {
+    return withInput(d, name, function (s) {
+      var names = Object.keys(s.properties), i = names.indexOf(name), j = spec && spec.to != null ? spec.to : (spec && spec.dir === 'up' ? i - 1 : i + 1);
+      if (j < 0 || j >= names.length) return { ok: false, error: spec && spec.dir === 'up' ? 'déjà en première position' : 'déjà en dernière position' };
+      names.splice(i, 1); names.splice(j, 0, name); s.properties = reorder(s.properties, names); return { ok: true, warnings: [] };
+    });
+  }
+  // patch: {title, inputDescription, tooltip, required, default} (default/tooltip: undefined ou '' = supprimer la clé)
+  function updateInput(d, name, patch) {
+    return withInput(d, name, function (s, prop) {
+      var np = Object.assign({}, prop), w = [];
+      function put(key, val, after) {
+        if (Object.prototype.hasOwnProperty.call(np, key)) { np[key] = val; return; }
+        var out = {}, placed = false; Object.keys(np).forEach(function (k) { out[k] = np[k]; if (k === after) { out[key] = val; placed = true; } }); if (!placed) out[key] = val; np = out;
+      }
+      if (patch.title !== undefined) { if (typeof patch.title !== 'string') return { ok: false, error: 'titre: chaîne attendue' }; put('title', patch.title, 'type'); }
+      if (patch.inputDescription !== undefined) { if (typeof patch.inputDescription !== 'string') return { ok: false, error: 'description: chaîne attendue' }; put('inputDescription', patch.inputDescription, 'title'); }
+      if (Object.prototype.hasOwnProperty.call(patch, 'tooltip')) {
+        if (patch.tooltip === undefined || patch.tooltip === '') delete np['x-cv-tooltip']; else { put('x-cv-tooltip', String(patch.tooltip), 'x-cv-password'); if (!np['x-cv-password']) w.push("tooltip: valeur observée uniquement sur les mots de passe (« PasswordRules »); effet côté CoreView non vérifié"); }
+      }
+      if (Object.prototype.hasOwnProperty.call(patch, 'default')) {
+        if (patch.default === undefined) delete np.default; else { np.default = patch.default; w.push("clé « default » jamais observée dans les exports: effet à l'import non vérifié"); }
+      }
+      s.properties[name] = np; if (patch.required !== undefined) setRequired(s, name, !!patch.required);
+      return { ok: true, warnings: w };
+    });
+  }
+  // kind: catégorie (inputs.SELECTABLE); opts: {targetType, values, customList, dataSource, filterable}
+  function setInputKind(d, name, kind, opts) {
+    return withInput(d, name, function (s, prop) {
+      var c = inputsApi.convertProp(prop, kind, opts || {}); if (c.error) return { ok: false, error: c.error };
+      s.properties[name] = c.prop; var w = c.lost.slice(); if (!c.certain) w.push(inputsApi.UNCERTAIN_NOTES[kind]); if (c.needs) w.push('à compléter: ' + ({ enum: 'valeurs de la liste', customList: 'identifiant de liste personnalisée', dataSource: 'source de données' })[c.needs]);
+      return { ok: true, warnings: w, lost: c.lost, needs: c.needs };
+    });
+  }
+  function setInputEnum(d, name, values) {
+    return withInput(d, name, function (s, prop) {
+      if (!Array.isArray(values) || values.some(function (v) { return typeof v !== 'string'; })) return { ok: false, error: 'liste de chaînes attendue' };
+      var w = [], dups = inputsApi.duplicatesOf(values); if (dups.length) w.push('valeurs en double: ' + dups.slice(0, 5).join(', ')); if (values.some(function (v) { return v === ''; })) return { ok: false, error: 'une valeur est vide' };
+      if (!values.length) w.push('liste vide');
+      var np = Object.assign({}, prop); if (!Array.isArray(np.enum) && !Object.prototype.hasOwnProperty.call(np, 'enum')) { var out = {}; Object.keys(np).forEach(function (k) { out[k] = np[k]; if (k === 'inputTargetType') out.enum = values.slice(); }); if (!out.enum) out.enum = values.slice(); np = out; } else np.enum = values.slice();
+      s.properties[name] = np; return { ok: true, warnings: w };
+    });
+  }
+  // src: {dataSource, customList, filterable}
+  function setInputSource(d, name, src) {
+    return withInput(d, name, function (s, prop) {
+      var np = Object.assign({}, prop);
+      if (src.customList !== undefined) { if (!Object.prototype.hasOwnProperty.call(np, 'x-cv-custom-list')) return { ok: false, error: 'cet input n\'est pas une liste personnalisée' }; np['x-cv-custom-list'] = String(src.customList); }
+      if (src.dataSource !== undefined) { if (!Object.prototype.hasOwnProperty.call(np, 'x-cv-data-source')) return { ok: false, error: 'cet input n\'est pas une source de données' }; np['x-cv-data-source'] = String(src.dataSource); }
+      if (src.filterable !== undefined) np['x-cv-data-source-filterable'] = !!src.filterable;
+      s.properties[name] = np; return { ok: true, warnings: [] };
+    });
+  }
+  function setPasswordRules(d, name, rules) {
+    return withInput(d, name, function (s, prop) {
+      if (!prop['x-cv-password']) return { ok: false, error: 'cet input n\'est pas un mot de passe' }; if (!isObj(rules)) return { ok: false, error: 'objet de règles attendu' };
+      var np = Object.assign({}, prop), had = Object.prototype.hasOwnProperty.call(np, 'passwordRules'); np.passwordRules = rules; s.properties[name] = np;
+      return { ok: true, warnings: had ? [] : ['aucune règle n\'existait: forme créée d\'après les exports observés'] };
+    });
+  }
+  // Expert: remplace la propriété par un objet JSON validé (le nom ne change pas)
+  function setInputProp(d, name, obj) {
+    return withInput(d, name, function (s) {
+      if (!isObj(obj)) return { ok: false, error: 'objet JSON attendu' }; if (typeof obj.type !== 'string' && !Array.isArray(obj.type)) return { ok: false, error: 'la clé « type » est requise' };
+      if (Object.prototype.hasOwnProperty.call(obj, 'enum') && !Array.isArray(obj.enum)) return { ok: false, error: '« enum » doit être un tableau' };
+      s.properties[name] = obj; return { ok: true, warnings: [] };
+    });
+  }
+  // items: [{name, prop, required}] ; mode: 'skip' | 'rename' | 'overwrite'. Retourne le détail par input.
+  function copyInputs(d, items, mode) {
+    var r = schemaOf(d); if (r.error) return { ok: false, error: r.error }; var report = [], props = Object.assign({}, r.s.properties), names = Object.keys(props);
+    items.forEach(function (it) {
+      var target = it.name, exists = names.some(function (k) { return k.toLowerCase() === target.toLowerCase(); });
+      if (exists) {
+        if (mode === 'skip') { report.push({ name: it.name, action: 'ignoré (existe déjà)' }); return; }
+        if (mode === 'overwrite') { var k = names.find(function (x) { return x.toLowerCase() === target.toLowerCase(); }); props[k] = JSON.parse(JSON.stringify(it.prop)); setRequired(r.s, k, !!it.required); report.push({ name: it.name, action: 'écrasé' }); return; }
+        var i = 2; while (names.some(function (x) { return x.toLowerCase() === (it.name + '_' + i).toLowerCase(); })) i++; target = it.name + '_' + i;
+      }
+      props[target] = JSON.parse(JSON.stringify(it.prop)); names.push(target); setRequired(r.s, target, !!it.required); report.push({ name: it.name, action: target === it.name ? 'ajouté' : 'ajouté sous le nom ' + target });
+    });
+    r.s.properties = reorder(props, names.filter(function (k) { return Object.prototype.hasOwnProperty.call(props, k); })); saveSchema(d, r.s);
+    return { ok: true, report: report, warnings: [] };
+  }
+  // Contrôles de l'éditeur d'inputs pour validate(): noms, required, formes.
+  function validateInputs(d, errors, warnings) {
+    if (typeof d.inputSchema !== 'string') return; var r = schemaOf(d); if (r.error) { errors.push('inputs: ' + r.error); return; }
+    var names = Object.keys(r.s.properties), seen = {};
+    names.forEach(function (k) {
+      var low = k.toLowerCase(); if (seen[low]) errors.push('input « ' + k + ' » en double (collision avec « ' + seen[low] + ' » insensible à la casse)'); seen[low] = k;
+      if (k === '' || k !== k.trim() || /[{}]|::/.test(k)) errors.push('nom d\'input invalide: « ' + k + ' »'); else if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(k)) warnings.push('nom d\'input hors [A-Za-z_][A-Za-z0-9_]*: « ' + k + ' »');
+      var p = r.s.properties[k]; if (!isObj(p)) { errors.push('input « ' + k + ' »: définition inattendue'); return; }
+      if (Object.prototype.hasOwnProperty.call(p, 'enum') && !Array.isArray(p.enum)) errors.push('input « ' + k + ' »: enum non-tableau');
+      if (Object.prototype.hasOwnProperty.call(p, 'x-cv-custom-list') && p['x-cv-custom-list'] === '') errors.push('input « ' + k + ' »: liste personnalisée non renseignée');
+      if (Object.prototype.hasOwnProperty.call(p, 'x-cv-data-source') && p['x-cv-data-source'] === '') errors.push('input « ' + k + ' »: source de données non renseignée');
+      if (Array.isArray(p.enum) && !p.enum.length) warnings.push('input « ' + k + ' »: liste de valeurs vide');
+    });
+    (Array.isArray(r.s.required) ? r.s.required : []).forEach(function (k) { if (names.indexOf(k) < 0) errors.push('« required » référence un input inexistant: ' + k); });
   }
 
   var api = { createSession: createSession, run: run, trial: trial, undo: undo, redo: redo, isDirty: isDirty, exportText: exportText, detectStyle: detectStyle, serializeWith: serializeWith, encodeLike: encodeLike,
     dataOf: dataOf, findNode: findNode, forEachNode: forEachNode, validate: validate, dependentsOf: dependentsOf, CATALOG_KEYS: CATALOG_KEYS,
     setWorkflowField: setWorkflowField, setNodeField: setNodeField, setSetting: setSetting, findReplace: findReplace, replaceFunction: replaceFunction, renameInput: renameInput,
-    replaceNodeType: replaceNodeType, deleteNode: deleteNode, duplicateNode: duplicateNode, moveNode: moveNode, moveTo: moveTo, mapLeaves: mapLeaves };
+    replaceNodeType: replaceNodeType, addInput: addInput, deleteInput: deleteInput, duplicateInput: duplicateInput, moveInput: moveInput, updateInput: updateInput, setInputKind: setInputKind, setInputEnum: setInputEnum, setInputSource: setInputSource, setPasswordRules: setPasswordRules, setInputProp: setInputProp, copyInputs: copyInputs, countInputRefs: countInputRefs, schemaOf: schemaOf, deleteNode: deleteNode, duplicateNode: duplicateNode, moveNode: moveNode, moveTo: moveTo, mapLeaves: mapLeaves };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else { root.WFV = root.WFV || {}; root.WFV.edit = api; }
 })(typeof self !== 'undefined' ? self : globalThis);

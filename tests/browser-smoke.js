@@ -7,7 +7,7 @@ const { spawn } = require('child_process');
 const fs = require('fs'), path = require('path'), os = require('os'), http = require('http');
 const DATA = process.env.WFV_DATA ? path.resolve(process.env.WFV_DATA) : path.join(__dirname, '..', 'fixtures');
 const APP = path.resolve(__dirname, '..');
-const OUT = process.env.WFV_OUT || '';
+const OUT = process.env.WFV_OUT || ''; if (OUT) fs.mkdirSync(OUT, { recursive: true });
 const candidates = [process.argv[2], process.env.WFV_BROWSER, 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', 'C:/Program Files/Microsoft/Edge/Application/msedge.exe', 'C:/Program Files/Google/Chrome/Application/chrome.exe',
   '/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/microsoft-edge', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge'].filter(Boolean);
 const browser = candidates.find((p) => { try { return fs.existsSync(p); } catch (e) { return false; } });
@@ -50,7 +50,7 @@ const ids = (n) => '00000000-0000-4000-8000-' + String(n).padStart(12, '0');
 
     // ---- page, CSP, version, chargement des fixtures
     res.page = await ev('({modules:Object.keys(window.WFV).sort().join(","),csp:!!document.querySelector("meta[http-equiv=Content-Security-Policy]"),referrer:(document.querySelector("meta[name=referrer]")||{}).content,version:document.getElementById("appVersion").textContent,footer:document.getElementById("about").innerText.length>60,title:document.title})');
-    check('CSP + referrer + version + pied de page', res.page.csp && res.page.referrer === 'no-referrer' && res.page.version === '0.1.0' && res.page.footer, res.page);
+    check('CSP + referrer + version + pied de page', res.page.csp && res.page.referrer === 'no-referrer' && res.page.version === require('../package.json').version && res.page.footer, res.page);
     expectCsp = true; res.cspEffective = await ev('(async()=>{window.__x=0;const s=document.createElement("script");s.textContent="window.__x=1";document.head.append(s);const d=document.createElement("div");d.setAttribute("style","color:red");document.body.append(d);let net="ok";try{await fetch("http://127.0.0.1:1/x");}catch(e){net="bloqué"}d.remove();s.remove();return {inlineScript:window.__x===0,fetch:net}})()'); await sleep(300); expectCsp = false;
     check('CSP effective: script inline et requêtes réseau bloqués', res.cspEffective.inlineScript && res.cspEffective.fetch === 'bloqué', res.cspEffective);
     await setFiles('#inDir', [DATA]); await sleep(2500);
@@ -98,6 +98,48 @@ const ids = (n) => '00000000-0000-4000-8000-' + String(n).padStart(12, '0');
     await ev('(()=>{const s=' + S + '.sessions.get(' + JSON.stringify(W2) + ');while(s.undo.length)document.dispatchEvent(new KeyboardEvent("keydown",{key:"z",ctrlKey:true,bubbles:true}))})()'); await sleep(400);
     await click('#btnExport'); await sleep(300); await click('#btnDoExport'); await sleep(400);
     check('annuler tout puis exporter = identique à l\'original', await ev('(async()=>{const b=window.__blobs,t=await b[b.length-1].text();return t===' + S + '.origs.get(' + JSON.stringify(W2) + ').rawText})()'));
+
+    // ---- éditeur d'inputs: ajout, renommage avec propagation, type, enum (gros), ordre, undo, diff, export, JSON brut (expert)
+    await hash('#wf=' + W1); await click('#btnEdit'); await sleep(400);
+    const set = (sel, v) => ev('(()=>{const e=document.querySelector(' + JSON.stringify(sel) + ');e.value=' + JSON.stringify(v) + ';e.dispatchEvent(new Event("input",{bubbles:true}));e.dispatchEvent(new Event("change",{bubbles:true}))})()');
+    const props = () => ev('JSON.parse(' + S + '.wfs.get(' + JSON.stringify(W1) + ').data.inputSchema).properties');
+    const btnText = (txt) => ev('(()=>{const b=[...document.querySelectorAll("dialog.editdlg[open] button")].find(b=>b.textContent.indexOf(' + JSON.stringify(txt) + ')>=0);if(!b)return false;b.click();return true})()');
+    res.inputsEd = await ev('({editor:!!document.getElementById("inputsEditor"),rows:document.querySelectorAll("#inputsEditor tr.inrow-edit").length,roHidden:[...document.querySelectorAll("#main table.inputs")].every(t=>t.closest("[hidden]"))})');
+    check('éditeur d\'inputs affiché en édition (12 lignes), tableau en lecture seule masqué', res.inputsEd.editor && res.inputsEd.rows === 12 && res.inputsEd.roHidden, res.inputsEd); await shot('inputs-editor.png');
+    await click('#btnAddInputOpen'); await sleep(200); await set('#inAddName', 'NouvelInput'); await set('#selAddKind', 'enum'); await set('#taAddValues', 'A\nB\nA'); await click('#btnAddInput'); await sleep(500);
+    let pr = await props(); check('ajout d\'un input liste (valeurs dédoublonnées)', pr.NouvelInput && JSON.stringify(pr.NouvelInput.enum) === '["A","B"]' && Object.keys(pr).length === 13, pr.NouvelInput);
+    await click('[data-in="UPN"][data-f="name"]'); await sleep(200); await set('#inRenameNew', 'Identifiant'); await sleep(200);
+    const cnt = await ev('document.getElementById("renameCount").textContent'); check('aperçu du renommage (nombre de références)', /^[1-9]\d* valeur/.test(cnt), cnt); await click('#btnDoRename'); await sleep(500);
+    pr = await props(); const raw = await ev('JSON.stringify(' + S + '.wfs.get(' + JSON.stringify(W1) + ').data.actions)');
+    check('renommage propagé (schéma + références, plus aucune ancienne référence)', 'Identifiant' in pr && !('UPN' in pr) && /input-stepUid::Identifiant::/.test(raw) && !/input-stepUid::UPN::/.test(raw) && JSON.parse(await ev('JSON.stringify(JSON.parse(' + S + '.wfs.get(' + JSON.stringify(W1) + ').data.inputSchema).required)')).includes('Identifiant'));
+    await set('select[data-in="Langue"][data-f="kind"]', 'text'); await sleep(400); const confirmShown = await ev('!!document.querySelector("dialog.editdlg[open]")');
+    check('changement de type avec perte: avertissement affiché avant application', confirmShown); await btnText('Appliquer quand même'); await sleep(500); pr = await props();
+    check('Langue convertie en texte (enum retiré)', pr.Langue && !('enum' in pr.Langue) && pr.Langue.type === 'string', pr.Langue);
+    await click('[data-in="NouvelInput"][data-f="enum"]'); await sleep(300);
+    await set('#taEnumPaste', Array.from({ length: 1500 }, (_, i) => 'Valeur ' + String(i).padStart(4, '0')).join('\n')); const t0 = Date.now(); await click('#btnEnumPaste'); await sleep(200); const ms = Date.now() - t0;
+    res.enum = await ev('({rows:document.querySelectorAll("#enumList .enumrow").length,more:!!document.getElementById("btnEnumMore"),info:document.getElementById("enumInfo").textContent})');
+    check('gros enum (1502 valeurs): rendu paresseux (100 lignes) et recherche', res.enum.rows === 100 && res.enum.more && /1502/.test(res.enum.info) && ms < 3000, { res: res.enum, ms });
+    await set('#inEnumSearch', 'Valeur 0749'); await sleep(200); check('recherche dans les valeurs', await ev('document.querySelectorAll("#enumList .enumrow").length') === 1);
+    await set('#inEnumSearch', ''); await click('#btnEnumApply'); await sleep(600); pr = await props(); check('1502 valeurs appliquées', pr.NouvelInput.enum.length === 1502 && pr.NouvelInput.enum[0] === 'A');
+    await click('[data-in="DisplayName"][data-f="up"]'); await sleep(400); pr = await props(); check('réordonner (monter)', Object.keys(pr)[0] === 'DisplayName');
+    await set('input[data-in="DisplayName"][data-f="title"]', 'Nom complet'); await sleep(400); check('titre édité en ligne', (await props()).DisplayName.title === 'Nom complet');
+    await ev('document.querySelector("#inputsEditor .inrow-edit select[data-f=target]")&&0'); await shot('inputs-editor-edited.png');
+    const dirtyDiff = await ev('(()=>{const o=' + S + '.origs.get(' + JSON.stringify(W1) + '),c=' + S + '.wfs.get(' + JSON.stringify(W1) + '),r=window.WFV.diff.diffWorkflows(o,c);return {inputs:r.inputs.summary,nodes:r.summary.added+r.summary.removed}})()');
+    check('diff original → modifié: 2 ajoutés (nouvel input + renommé), 1 supprimé (ancien nom), modifiés, nodes inchangés', dirtyDiff.inputs.added === 2 && dirtyDiff.inputs.removed === 1 && dirtyDiff.inputs.modified >= 2 && dirtyDiff.nodes === 0, dirtyDiff);
+    await click('#btnExport'); await sleep(400); check('validation d\'export sans erreur après édition d\'inputs', await ev('!!document.getElementById("valOk")')); await click('#btnDoExport'); await sleep(400);
+    check('export des inputs modifiés: JSON valide', await ev('(async()=>{const b=window.__blobs,t=await b[b.length-1].text();return !!JSON.parse(t).data.inputSchema&&JSON.parse(JSON.parse(t).data.inputSchema).properties.NouvelInput.enum.length===1502})()'));
+    await click('#chkExpert'); await sleep(300); await click('#inputsEditor .tech'); await sleep(300);
+    check('expert: JSON brut de l\'input éditable', await ev('!!document.getElementById("taRawInput")')); await ev('document.getElementById("taRawInput").value="{oops";document.getElementById("taRawInput").dispatchEvent(new Event("input"))'); check('JSON brut invalide signalé', /invalide/.test(await ev('document.querySelector("dialog.editdlg[open] .errmsg").textContent')));
+    await ev('document.querySelector("dialog.editdlg").close()'); await click('#chkExpert'); await sleep(200);
+    await ev('(()=>{const s=' + S + '.sessions.get(' + JSON.stringify(W1) + ');while(s.undo.length)document.dispatchEvent(new KeyboardEvent("keydown",{key:"z",ctrlKey:true,bubbles:true}))})()'); await sleep(500);
+    check('annuler tout: workflow identique à l\'original', await ev(S + '.wfs.get(' + JSON.stringify(W1) + ').dirty===false&&Object.keys(JSON.parse(' + S + '.wfs.get(' + JSON.stringify(W1) + ').data.inputSchema).properties).length===12'));
+    await click('#btnExport'); await sleep(300); await click('#btnDoExport'); await sleep(400);
+    check('export après annulation = octet pour octet', await ev('(async()=>{const b=window.__blobs,t=await b[b.length-1].text();return t===' + S + '.origs.get(' + JSON.stringify(W1) + ').rawText})()'));
+    await click('#btnCopyInputs'); await sleep(300); res.copy = await ev('document.getElementById("copyList")&&document.getElementById("copyList").children.length'); check('copie vers un autre workflow: aperçu', res.copy > 0, res.copy); await ev('document.querySelector("dialog.editdlg").close()');
+    await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] }); await sleep(200); await shot('inputs-editor-light.png'); await send('Emulation.setEmulatedMedia', { features: [] });
+    await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 800, deviceScaleFactor: 1, mobile: true }); await sleep(400); const mo = await ev('({doc:document.documentElement.scrollWidth-document.documentElement.clientWidth,main:document.getElementById("main").scrollWidth-document.getElementById("main").clientWidth})'); check('mobile: éditeur d\'inputs sans débordement', mo.doc <= 0 && mo.main <= 0, mo);
+    await click('#btnAddInputOpen'); await sleep(300); const dw = await ev('(()=>{const d=document.querySelector("dialog.editdlg");return d.getBoundingClientRect().width<=window.innerWidth+1})()'); check('mobile: dialogue d\'ajout dans l\'écran', dw); await ev('document.querySelector("dialog.editdlg").close()'); await send('Emulation.clearDeviceMetricsOverride');
+    await click('#btnEdit') ; await hash('#tab=global');
 
     // ---- scripts PowerShell: coloration, bascule, HTML hostile
     await hash('#wf=' + W1); await ev('(()=>{const p=[...document.querySelectorAll("#main .scriptpanel")][0];p.open=true;p.scrollIntoView()})()'); await sleep(500); await click('#btnShowScript'); await sleep(300);

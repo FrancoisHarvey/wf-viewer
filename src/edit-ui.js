@@ -310,7 +310,7 @@
     dialog('Valider / Exporter', body, [{ text: 'Exporter ce workflow (.json)', primary: true, id: 'btnDoExport', onclick: (close) => doExport([cur], close) }].concat(dirtyAll.length > 1 ? [{ text: 'Exporter les ' + dirtyAll.length + ' workflows modifiés', id: 'btnExportAll', onclick: (close) => doExport(dirtyAll.map((id) => S.wfs.get(id)), close) }] : []));
   }
 
-  window.WFV.editUi = { ensureSession, apply, sync, exportDialog, searchDialog, infoDialog, doUndo, doRedo, download };
+  window.WFV.editUi = { ensureSession, apply, sync, exportDialog, searchDialog, infoDialog, doUndo, doRedo, download, dialog, field, listBox, toast, ensureTemp };
   // bandeau d'avertissement global dans la barre du haut quand des modifications existent
   U.render();
 })();

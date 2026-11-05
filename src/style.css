@@ -228,3 +228,14 @@ body.expert .expert-toggle { background: var(--accent); color: var(--accent-fg);
 
 /* pied de page (confidentialité / non-affiliation / version) */
 #about { padding: 3px 10px; font-size: 11px; color: var(--muted); background: var(--panel); border-top: 1px solid var(--border); display: flex; gap: 14px; flex-wrap: wrap; }
+
+/* éditeur d'inputs */
+.hidden { display: none !important; }
+.gridwrap { overflow-x: auto; max-width: 100%; }
+table.inputs-edit td, table.inputs-edit th { vertical-align: top; }
+table.inputs-edit input[type=text], table.inputs-edit select { min-width: 7em; max-width: 16em; width: 100%; background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 2px 4px; }
+.inctl { white-space: nowrap; } .inctl button { padding: 1px 6px; } .inact button { padding: 1px 6px; }
+.drag { cursor: grab; } tr.dragging { opacity: .5; } tr.dragover td { outline: 2px dashed var(--focus); outline-offset: -2px; }
+.enumlist { max-height: 40vh; overflow: auto; border: 1px solid var(--border); margin: 4px 0; } .enumrow { display: flex; gap: 4px; align-items: center; padding: 1px 4px; } .enumval { flex: 1; min-width: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 1px 4px; }
+.uncertain { font-size: 11px; color: var(--modfg); } details.adv > summary { cursor: pointer; font-size: 11px; color: var(--muted); }
+.inl { display: inline-flex; gap: 4px; font-size: 12px; align-items: center; }
