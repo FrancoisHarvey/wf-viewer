@@ -3,6 +3,7 @@
 (function (root) {
   'use strict';
   var refs = typeof require === 'function' ? require('./refs.js') : root.WFV.refs;
+  var t18 = (typeof require === 'function' ? require('./i18n.js') : root.WFV.i18n).t;
   var model = typeof require === 'function' ? require('./model.js') : root.WFV.model;
 
   var HEADER_NOISE = ['id', 'companyId', 'owner', 'createdBy', 'updatedBy', 'createdDate', 'updatedDate', 'createdAt', 'updatedAt',
@@ -119,9 +120,7 @@
   }
 
   // ---- diff typé des inputs (appariés par nom de propriété) ----
-  var INPUT_FIELDS = [['kindLabel', 'Type'], ['type', 'Type JSON'], ['required', 'Requis'], ['title', 'Titre'], ['description', 'Description'], ['tooltip', 'Tooltip'],
-    ['customList', 'Liste personnalisée'], ['dataSource', 'Source de données'], ['filterable', 'Filtrable'], ['targetType', 'Cible'], ['format', 'Format'], ['ui', 'UI'],
-    ['protected', 'Protégé'], ['passwordRules', 'Règles de mot de passe'], ['defaultValue', 'Valeur par défaut']];
+  var INPUT_FIELDS = ['kindLabel', 'type', 'required', 'title', 'description', 'tooltip', 'customList', 'dataSource', 'filterable', 'targetType', 'format', 'ui', 'protected', 'passwordRules', 'defaultValue'];
   function diffInputs(pa, pb) {
     var ia = {}, ib = {}, names = [];
     pa.inputs.forEach(function (i) { ia[i.name] = i; names.push(i.name); });
@@ -131,12 +130,12 @@
       var a = ia[nm], b = ib[nm], it = { name: nm, a: a || null, b: b || null, status: 'same', changes: [] };
       if (!a || !b) it.status = a ? 'removed' : 'added';
       else {
-        INPUT_FIELDS.forEach(function (f) { if (!deepEqual(a[f[0]], b[f[0]])) it.changes.push({ field: f[0], label: f[1], before: a[f[0]], after: b[f[0]] }); });
+        INPUT_FIELDS.forEach(function (f) { if (!deepEqual(a[f], b[f])) it.changes.push({ field: f, label: t18('diff.in.' + f), before: a[f], after: b[f] }); });
         var ea = a.enumValues || [], eb = b.enumValues || [];
         var added = eb.filter(function (v) { return ea.indexOf(v) < 0; }), removed = ea.filter(function (v) { return eb.indexOf(v) < 0; });
-        if (added.length || removed.length) it.changes.push({ field: 'enum', label: 'Valeurs (enum)', added: added, removed: removed, before: a.enumValues, after: b.enumValues });
-        else if ((a.enumValues && !b.enumValues) || (!a.enumValues && b.enumValues)) it.changes.push({ field: 'enum', label: 'Valeurs (enum)', added: [], removed: [], before: a.enumValues, after: b.enumValues });
-        else if (!deepEqual(ea, eb)) it.changes.push({ field: 'enumOrder', label: 'Ordre des valeurs (enum)', before: ea, after: eb });
+        if (added.length || removed.length) it.changes.push({ field: 'enum', label: t18('diff.in.enum'), added: added, removed: removed, before: a.enumValues, after: b.enumValues });
+        else if ((a.enumValues && !b.enumValues) || (!a.enumValues && b.enumValues)) it.changes.push({ field: 'enum', label: t18('diff.in.enum'), added: [], removed: [], before: a.enumValues, after: b.enumValues });
+        else if (!deepEqual(ea, eb)) it.changes.push({ field: 'enumOrder', label: t18('diff.in.enumOrder'), before: ea, after: eb });
         if (it.changes.length) it.status = 'modified';
       }
       sum[it.status]++; items.push(it);

@@ -12,55 +12,59 @@
 </head>
 <body>
 <header id="topbar">
-  <button id="btnOpen" type="button" class="primary">Ouvrir dossier…</button>
-  <button id="btnOpenFiles" type="button">Ouvrir fichiers…</button>
-  <button id="btnDemo" type="button" data-demo-load title="Essayer l'outil avec des exemples fictifs, sans aucun fichier">Charger les données démo</button>
-  <button id="btnBack" type="button" title="Précédent (Alt+←)" aria-label="Précédent">◀</button>
-  <button id="btnFwd" type="button" title="Suivant (Alt+→)" aria-label="Suivant">▶</button>
-  <nav id="tabs" role="tablist" aria-label="Vues">
-    <button role="tab" data-tab="detail" type="button">Détail</button>
-    <button role="tab" data-tab="compare" type="button">Comparer</button>
-    <button role="tab" data-tab="analysis" type="button">Analyse</button>
-    <button role="tab" data-tab="quality" type="button">Qualité</button>
-    <button role="tab" data-tab="flow" type="button">Flux</button>
-    <button role="tab" data-tab="calls" type="button">Appels</button>
-    <button role="tab" data-tab="impact" type="button">Impact</button>
-    <button role="tab" data-tab="global" type="button">Global</button>
+  <button id="btnOpen" type="button" class="primary" data-i18n="top.open">Ouvrir dossier…</button>
+  <button id="btnOpenFiles" type="button" data-i18n="top.openFiles">Ouvrir fichiers…</button>
+  <button id="btnDemo" type="button" data-demo-load title="Essayer l'outil avec des exemples fictifs, sans aucun fichier" data-i18n-title="top.demoTitle" data-i18n="top.demo">Charger les données démo</button>
+  <button id="btnBack" type="button" title="Précédent (Alt+←)" aria-label="Précédent" data-i18n-title="top.back" data-i18n-aria="top.backAria">◀</button>
+  <button id="btnFwd" type="button" title="Suivant (Alt+→)" aria-label="Suivant" data-i18n-title="top.fwd" data-i18n-aria="top.fwdAria">▶</button>
+  <nav id="tabs" role="tablist" aria-label="Vues" data-i18n-aria="tabs.aria">
+    <button role="tab" data-tab="detail" type="button" data-i18n="tab.detail">Détail</button>
+    <button role="tab" data-tab="compare" type="button" data-i18n="tab.compare">Comparer</button>
+    <button role="tab" data-tab="analysis" type="button" data-i18n="tab.analysis">Analyse</button>
+    <button role="tab" data-tab="quality" type="button" data-i18n="tab.quality">Qualité</button>
+    <button role="tab" data-tab="flow" type="button" data-i18n="tab.flow">Flux</button>
+    <button role="tab" data-tab="calls" type="button" data-i18n="tab.calls">Appels</button>
+    <button role="tab" data-tab="impact" type="button" data-i18n="tab.impact">Impact</button>
+    <button role="tab" data-tab="global" type="button" data-i18n="tab.global">Global</button>
   </nav>
-  <label id="expertWrap" class="expert-toggle" title="Raccourci : touche E"><input type="checkbox" id="chkExpert" aria-describedby="expertHint"> <b>Vue expert</b></label><span id="expertHint" class="visually-hidden">Affiche les identifiants, JSON bruts, schémas et détails techniques. Raccourci : touche E.</span>
+  <label id="expertWrap" class="expert-toggle" title="Raccourci : touche E" data-i18n-title="top.expertTitle"><input type="checkbox" id="chkExpert" aria-describedby="expertHint"> <b data-i18n="top.expert">Vue expert</b></label><span id="expertHint" class="visually-hidden" data-i18n="top.expertHint">Affiche les identifiants, JSON bruts, schémas et détails techniques. Raccourci : touche E.</span>
+  <label id="langWrap" class="lang-toggle"><span data-i18n="lang.label">Langue</span> <select id="selLang"><option value="fr" lang="fr">Français</option><option value="en" lang="en">English</option></select></label>
   <span id="status" role="status" aria-live="polite"></span>
   <button id="btnErrors" type="button" hidden class="warn"></button>
 </header>
-<div id="demoBanner" role="region" aria-label="Données de démonstration" hidden><strong>Données de démonstration (fictives)</strong> <span id="demoCount"></span> <button id="btnTour" type="button">Visite guidée</button> <button id="btnQuitDemo" type="button">Quitter la démo</button></div>
+<div id="demoBanner" role="region" aria-label="Données de démonstration" data-i18n-aria="demo.bannerAria" hidden><strong data-i18n="demo.banner">Données de démonstration (fictives)</strong> <span id="demoCount"></span> <button id="btnTour" type="button" data-i18n="demo.tour">Visite guidée</button> <button id="btnQuitDemo" type="button" data-i18n="demo.quit">Quitter la démo</button></div>
 <div id="layout">
-  <aside id="sidebar" aria-label="Liste des workflows">
+  <aside id="sidebar" aria-label="Liste des workflows" data-i18n-aria="side.aria">
     <div class="side-tools">
-      <input id="q" type="search" placeholder="Rechercher (nom, GUID, texte des settings)…" aria-label="Rechercher">
+      <input id="q" type="search" placeholder="Rechercher (nom, GUID, texte des settings)…" aria-label="Rechercher" data-i18n-ph="side.search" data-i18n-aria="side.searchAria">
       <div class="row">
-        <select id="fStatus" aria-label="Filtrer par statut"><option value="">Tous statuts</option><option value="Active">Active</option><option value="Inactive">Inactive</option></select>
-        <select id="fSort" aria-label="Trier par"><option value="name">Tri: nom</option><option value="nodes">Tri: nb nodes</option><option value="updated">Tri: date maj</option></select>
+        <select id="fStatus" aria-label="Filtrer par statut" data-i18n-aria="side.statusAria"><option value="" data-i18n="side.allStatus">Tous statuts</option><option value="Active">Active</option><option value="Inactive">Inactive</option></select>
+        <select id="fSort" aria-label="Trier par" data-i18n-aria="side.sortAria"><option value="name" data-i18n="side.sortName">Tri: nom</option><option value="nodes" data-i18n="side.sortNodes">Tri: nb nodes</option><option value="updated" data-i18n="side.sortUpdated">Tri: date maj</option></select>
       </div>
-      <label class="small muted" id="qScrWrap" hidden><input id="qScr" type="checkbox"> inclure le texte des scripts PowerShell</label>
+      <label class="small muted" id="qScrWrap" hidden><input id="qScr" type="checkbox"> <span data-i18n="side.inclScripts">inclure le texte des scripts PowerShell</span></label>
       <div id="usageChip" class="chip" hidden></div>
-      <div class="row small"><span id="count"></span><button id="btnCompare" type="button" disabled>Comparer les 2 cochés</button></div>
+      <div class="row small"><span id="count"></span><button id="btnCompare" type="button" disabled data-i18n="side.compare2">Comparer les 2 cochés</button></div>
     </div>
-    <ul id="list" tabindex="0" role="listbox" aria-label="Workflows"></ul>
+    <ul id="list" tabindex="0" role="listbox" aria-label="Workflows" data-i18n-aria="side.listAria"></ul>
   </aside>
   <main id="main" tabindex="-1">
     <div id="welcome">
-      <h1>Visionneuse de workflows CoreView</h1>
-      <p>Lecture seule. Cliquez sur <b>Ouvrir dossier…</b> (Chrome/Edge) ou glissez-déposez un dossier / des fichiers <code>.json</code> ici.</p>
-      <p><button type="button" class="primary" id="btnDemoWelcome" data-demo-load>Charger les données démo</button> <small class="muted">pour essayer sans aucun fichier (exemples fictifs)</small></p>
-      <p class="muted">Tout est traité localement dans le navigateur, rien n'est envoyé.</p>
+      <h1 data-i18n="welcome.h1">Visionneuse de workflows CoreView</h1>
+      <p><span data-i18n="welcome.p1a">Lecture seule. Cliquez sur</span> <b data-i18n="top.open">Ouvrir dossier…</b> <span data-i18n="welcome.p1b">(Chrome/Edge) ou glissez-déposez un dossier / des fichiers</span> <code>.json</code> <span data-i18n="welcome.p1c">ici.</span></p>
+      <p><button type="button" class="primary" id="btnDemoWelcome" data-demo-load data-i18n="top.demo">Charger les données démo</button> <small class="muted" data-i18n="welcome.demoHint">pour essayer sans aucun fichier (exemples fictifs)</small></p>
+      <p class="muted" data-i18n="welcome.local">Tout est traité localement dans le navigateur, rien n'est envoyé.</p>
     </div>
   </main>
 </div>
-<footer id="about" role="contentinfo"><span><b>wf-viewer</b> v<span id="appVersion"></span> — 100 % local : les fichiers chargés restent dans votre navigateur, rien n'est envoyé.</span> <span>Projet indépendant, non affilié à CoreView ni à son éditeur ; CoreView est une marque de son propriétaire.</span> <span>Export : format d'import non validé, testez sur un workflow non critique.</span></footer>
-<div id="dropOverlay" hidden>Déposez le dossier ou les fichiers JSON</div>
+<footer id="about" role="contentinfo"><span><b>wf-viewer</b> v<span id="appVersion"></span> <span data-i18n="foot.local">— 100 % local : les fichiers chargés restent dans votre navigateur, rien n'est envoyé.</span></span> <span data-i18n="foot.affil">Projet indépendant, non affilié à CoreView ni à son éditeur ; CoreView est une marque de son propriétaire.</span> <span data-i18n="foot.export">Export : format d'import non validé, testez sur un workflow non critique.</span></footer>
+<div id="dropOverlay" hidden data-i18n="drop.overlay">Déposez le dossier ou les fichiers JSON</div>
 <input id="inDir" type="file" multiple webkitdirectory hidden>
 <input id="inFiles" type="file" multiple accept=".json,.ps1,.txt,.csv,application/json" hidden>
-<dialog id="dlg"><div id="dlgBody"></div><form method="dialog"><button>Fermer</button></form></dialog>
+<dialog id="dlg"><div id="dlgBody"></div><form method="dialog"><button data-i18n="dlg.close">Fermer</button></form></dialog>
 <!-- Scripts classiques (pas de type=module): compatibles file:// -->
+<script src="src/i18n.js"></script>
+<script src="src/i18n-fr.js"></script>
+<script src="src/i18n-en.js"></script>
 <script src="src/version.js"></script>
 <script src="src/refs.js"></script>
 <script src="src/model.js"></script>

@@ -133,7 +133,7 @@ test('natives: chaque node natif a un résumé non vide; cas synthétiques', () 
 
 test('compatibilité <script> classique: modules purs chargés sans require/module', () => {
   const ctx = { console }; ctx.self = ctx; vm.createContext(ctx);
-  ['refs', 'model', 'analysis', 'diff', 'inputs', 'natives', 'scripts', 'labels', 'pshighlight', 'graph', 'lint', 'edit', 'version', 'demo-data', 'demo-logic'].forEach((f) => vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'src', f + '.js'), 'utf8'), ctx, { filename: f + '.js' }));
-  assert.deepStrictEqual(Object.keys(ctx.WFV).sort(), ['analysis', 'demo', 'demoLogic', 'diff', 'edit', 'graph', 'inputs', 'labels', 'lint', 'model', 'natives', 'pshighlight', 'refs', 'scripts', 'version']);
+  ['i18n', 'i18n-fr', 'i18n-en', 'refs', 'model', 'analysis', 'diff', 'inputs', 'natives', 'scripts', 'labels', 'pshighlight', 'graph', 'lint', 'edit', 'version', 'demo-data', 'demo-logic'].forEach((f) => vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'src', f + '.js'), 'utf8'), ctx, { filename: f + '.js' }));
+  assert.deepStrictEqual(Object.keys(ctx.WFV).sort(), ['analysis', 'demo', 'demoLogic', 'diff', 'edit', 'graph', 'i18n', 'inputs', 'labels', 'lint', 'model', 'natives', 'pshighlight', 'refs', 'scripts', 'version']);
   assert.strictEqual(ctx.WFV.version, require('../package.json').version);
 });

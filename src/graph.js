@@ -2,7 +2,7 @@
 (function (root) {
   'use strict';
   var req = function (n) { return typeof require === 'function' ? require('./' + n + '.js') : root.WFV[n]; };
-  var model = req('model'), analysis = req('analysis');
+  var model = req('model'), analysis = req('analysis'), t18 = req('i18n').t;
 
   // ================= 2. Flux de données d'un workflow =================
   // Arêtes: action::uid (producteur -> consommateur) et input (entrée du workflow -> consommateur).
@@ -46,8 +46,8 @@
 
   function groupOf(tn) {
     var p = tn.parent; if (!p) return null;
-    if (p.kind === 'sequence' && p.children.indexOf(tn) >= 0) return { id: 'seq:' + p.uid, label: 'Séquence « ' + (p.name || p.path) + ' »' };
-    if (p.kind === 'if' || p.trueBranch.indexOf(tn) >= 0 || p.falseBranch.indexOf(tn) >= 0) return { id: 'br:' + p.uid + ':' + (p.trueBranch.indexOf(tn) >= 0 ? 'T' : 'F'), label: (p.trueBranch.indexOf(tn) >= 0 ? 'VRAI' : 'FAUX') + ' de « ' + (p.name || p.path) + ' »' };
+    if (p.kind === 'sequence' && p.children.indexOf(tn) >= 0) return { id: 'seq:' + p.uid, label: t18('graph.group.seq', { name: p.name || p.path }) };
+    if (p.kind === 'if' || p.trueBranch.indexOf(tn) >= 0 || p.falseBranch.indexOf(tn) >= 0) return { id: 'br:' + p.uid + ':' + (p.trueBranch.indexOf(tn) >= 0 ? 'T' : 'F'), label: t18(p.trueBranch.indexOf(tn) >= 0 ? 'graph.group.true' : 'graph.group.false', { name: p.name || p.path }) };
     return null;
   }
 
@@ -185,24 +185,24 @@
     var uses = [], an = analysis;
     map.forEach(function (w) { var a = an.analyzeWorkflow(w, map); var bag = kind === 'var' ? a.variables : a.fns; var k = Object.keys(bag).filter(function (x) { return kind === 'var' ? (bag[x].param === name) : x === name; }); k.forEach(function (x) { bag[x].uses.forEach(function (u) { uses.push({ wf: w, node: u.node, where: u.where, token: u.token }); }); }); });
     var wfs = {}; uses.forEach(function (u) { wfs[u.wf.id] = u.wf; });
-    return { kind: kind, key: name, uses: uses, directWfs: Object.keys(wfs).map(function (i) { return wfs[i]; }), indirect: [], title: (kind === 'var' ? 'Variable ' : 'Fonction ') + name };
+    return { kind: kind, key: name, uses: uses, directWfs: Object.keys(wfs).map(function (i) { return wfs[i]; }), indirect: [], title: t18(kind === 'var' ? 'graph.title.var' : 'graph.title.fn', { name: name }) };
   }
   function impactMarkdown(imp) {
     var L = [], esc = function (s) { return String(s == null ? '' : s).replace(/\|/g, '\\|').replace(/\r?\n/g, ' '); };
-    L.push('# Rapport d\'impact — ' + (imp.title || imp.key), '');
-    L.push('- Clé: `' + imp.key + '`' + (imp.kind === 'action' ? '' : ' (' + (imp.kind === 'var' ? 'variable d\'input' : 'fonction de token') + ')'));
+    L.push(t18('graph.md.title', { title: imp.title || imp.key }), '');
+    L.push(t18('graph.md.key', { key: imp.key }) + (imp.kind === 'action' ? '' : ' (' + t18(imp.kind === 'var' ? 'graph.md.kindVar' : 'graph.md.kindFn') + ')'));
     if (imp.kind === 'action') {
-      L.push('- État: ' + (imp.state || 'inconnu (liste customaction non chargée)'));
-      L.push('- Rapport PS7: ' + (imp.report ? imp.report.Status + (imp.report.Issues ? ' — ' + esc(imp.report.Issues) : '') : 'non chargé'));
-      L.push('- Script: ' + (imp.hasScript ? 'chargé' : 'non chargé'));
+      L.push(t18('graph.md.state', { v: imp.state || t18('graph.md.stateUnknown') }));
+      L.push(t18('graph.md.ps7', { v: imp.report ? imp.report.Status + (imp.report.Issues ? ' — ' + esc(imp.report.Issues) : '') : t18('graph.md.notLoaded') }));
+      L.push(t18('graph.md.script', { v: t18(imp.hasScript ? 'graph.md.loaded' : 'graph.md.notLoaded') }));
     }
-    L.push('- Nodes concernés: ' + imp.uses.length + ' dans ' + imp.directWfs.length + ' workflow(s) (' + imp.directWfs.filter(function (w) { return w.status === 'Active'; }).length + ' actif(s))');
-    L.push('- Workflows impactés indirectement (appel imbriqué): ' + imp.indirect.length, '');
-    L.push('## Usages directs', '', '| Workflow | Statut | Node | Chemin | ID workflow |', '|---|---|---|---|---|');
-    imp.uses.forEach(function (u) { L.push('| ' + esc(u.wf.name) + ' | ' + esc(u.wf.status) + ' | ' + esc(u.node ? (u.node.name || u.node.type) : '(workflow)') + ' | ' + esc(u.node ? u.node.path : u.where) + ' | `' + u.wf.id + '` |'); });
-    L.push('', '## Impact transitif (via workflows imbriqués)', '');
-    if (!imp.indirect.length) L.push('_Aucun_'); else { L.push('| Workflow | Statut | Chaîne d\'appel |', '|---|---|---|'); imp.indirect.forEach(function (x) { L.push('| ' + esc(x.wf.name) + ' | ' + esc(x.wf.status) + ' | ' + esc((x.chain || []).map(function (id) { return id; }).join(' → ')) + ' |'); }); }
-    L.push('', '_Rapport généré par wf-viewer (lecture seule). Les statuts viennent des fichiers chargés._');
+    L.push(t18('graph.md.nodes', { nodes: imp.uses.length, wfs: imp.directWfs.length, active: imp.directWfs.filter(function (w) { return w.status === 'Active'; }).length }));
+    L.push(t18('graph.md.indirect', { n: imp.indirect.length }), '');
+    L.push(t18('graph.md.direct'), '', t18('graph.md.directHead'), '|---|---|---|---|---|');
+    imp.uses.forEach(function (u) { L.push('| ' + esc(u.wf.name) + ' | ' + esc(u.wf.status) + ' | ' + esc(u.node ? (u.node.name || u.node.type) : t18('graph.md.wfLevel')) + ' | ' + esc(u.node ? u.node.path : u.where) + ' | `' + u.wf.id + '` |'); });
+    L.push('', t18('graph.md.transitive'), '');
+    if (!imp.indirect.length) L.push(t18('graph.md.none')); else { L.push(t18('graph.md.chainHead'), '|---|---|---|'); imp.indirect.forEach(function (x) { L.push('| ' + esc(x.wf.name) + ' | ' + esc(x.wf.status) + ' | ' + esc((x.chain || []).map(function (id) { return id; }).join(' → ')) + ' |'); }); }
+    L.push('', t18('graph.md.footer'));
     return L.join('\n');
   }
 

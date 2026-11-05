@@ -2,6 +2,7 @@
 (function (root) {
   'use strict';
   var refs = typeof require === 'function' ? require('./refs.js') : root.WFV.refs;
+  var t18 = (typeof require === 'function' ? require('./i18n.js') : root.WFV.i18n).t;
 
   function tryParse(s) {
     if (typeof s !== 'string') return { ok: false, error: 'non-string' };
@@ -89,10 +90,10 @@
   // text: contenu du fichier. Retourne {ok:true, wf} ou {ok:false, error}.
   function parseWorkflowText(text, fileName) {
     var p = tryParse(typeof text === 'string' ? text.replace(/^﻿/, '') : text);
-    if (!p.ok) return { ok: false, error: 'JSON invalide: ' + p.error, file: fileName };
+    if (!p.ok) return { ok: false, key: 'model.err.json', vars: { msg: p.error }, error: t18('model.err.json', { msg: p.error }), file: fileName };
     var d = p.v && p.v.data && typeof p.v.data === 'object' ? p.v.data : p.v;
-    if (!d || typeof d !== 'object' || Array.isArray(d)) return { ok: false, error: 'Structure inattendue (objet attendu)', file: fileName };
-    if (!d.id || !Array.isArray(d.actions)) return { ok: false, error: 'Pas un workflow (id/actions manquants)', file: fileName };
+    if (!d || typeof d !== 'object' || Array.isArray(d)) return { ok: false, key: 'model.err.structure', error: t18('model.err.structure'), file: fileName };
+    if (!d.id || !Array.isArray(d.actions)) return { ok: false, key: 'model.err.notWorkflow', error: t18('model.err.notWorkflow'), file: fileName };
     return { ok: true, wf: buildWorkflow(d, fileName, text, p.v) };
   }
 
@@ -104,7 +105,7 @@
     all.forEach(function (n, i) { n.order = i; });
     var uidMap = {}; all.forEach(function (n) { if (n.uid && !uidMap[n.uid]) uidMap[n.uid] = n; });
     return {
-      id: d.id, file: fileName, rawText: rawText, root: root, name: d.workflowName || '(sans nom)', description: d.description || '',
+      id: d.id, file: fileName, rawText: rawText, root: root, name: d.workflowName || t18('model.noName'), description: d.description || '',
       status: d.status || '', data: d, main: main, catchList: catchList, all: all, uidMap: uidMap,
       nodeCount: all.length, updated: d.updatedDate || null, created: d.createdDate || null,
       duplicatedOfId: d.duplicatedOfId || null
@@ -129,8 +130,8 @@
     var map = new Map(), errors = [];
     items.forEach(function (it) {
       var r = parseWorkflowText(it.text, it.name);
-      if (!r.ok) { errors.push({ file: it.name, error: r.error }); return; }
-      if (map.has(r.wf.id)) errors.push({ file: it.name, error: 'ID dupliqué (déjà chargé depuis ' + map.get(r.wf.id).file + '), ignoré' });
+      if (!r.ok) { errors.push({ file: it.name, error: r.error, key: r.key, vars: r.vars }); return; }
+      if (map.has(r.wf.id)) errors.push({ file: it.name, key: 'model.err.dup', vars: { file: map.get(r.wf.id).file }, error: t18('model.err.dup', { file: map.get(r.wf.id).file }) });
       else map.set(r.wf.id, r.wf);
     });
     return { workflows: map, errors: errors };

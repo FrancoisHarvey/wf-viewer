@@ -1,10 +1,12 @@
 # wf-viewer
 
+**Français** · [English](README.en.md)
+
 **Visionneuse locale de workflows exportés en JSON** : naviguer, comparer, analyser, déboguer, lire les scripts PowerShell associés et, avec prudence, éditer et réexporter. Page 100 % statique (HTML + JavaScript), sans serveur ni dépendance.
 
 > **Projet indépendant, non affilié à CoreView ni à son éditeur.** CoreView est une marque de son propriétaire. Cet outil n'est ni approuvé ni supporté par lui.
 
-*English summary: a single-page, offline, dependency-free viewer for exported workflow JSON files (browse, diff, lint, data-flow / call graphs, impact reports, PowerShell script viewer with syntax highlighting, guarded editing and export). Everything runs locally in your browser; nothing is uploaded. Not affiliated with CoreView. Exports are NOT validated against any import format: test on a non-critical workflow and keep your originals. MIT licensed.*
+*English version: see [README.en.md](README.en.md). Version 0.4.0 — interface bilingue français / anglais.*
 
 ![Détail d'un workflow (données fictives)](docs/detail-base.png)
 
@@ -15,7 +17,15 @@
 - **100 % local** : les fichiers que vous chargez restent dans votre navigateur ; rien n'est envoyé nulle part. Le code ne contient aucune requête réseau (pas de `fetch`, pas de CDN, pas de police ni de script externe).
 - La page déclare une politique de sécurité stricte (`Content-Security-Policy` : `default-src 'none'`, `connect-src 'none'`, scripts et styles `'self'` uniquement) et `referrer: no-referrer`.
 - Tout contenu issu de vos fichiers (y compris le HTML des courriels ou le texte des scripts) est affiché comme **texte** : il n'est jamais interprété comme HTML.
-- Seules des préférences d'affichage sont mémorisées dans le navigateur (`localStorage` : vue expert, règles du linter, coloration).
+- Seules des préférences d'affichage sont mémorisées dans le navigateur (`localStorage` : vue expert, langue, règles du linter, coloration).
+
+## Langue de l'interface (français / anglais)
+
+- **Langue par défaut = celle du navigateur** : si la première langue préférée (`navigator.languages[0]`) commence par `fr`, l'interface est en **français** ; dans tous les autres cas, elle est en **anglais**.
+- **Bascule manuelle** : sélecteur **Langue / Language** (Français / English) dans la barre du haut, à côté de « Vue expert ». Le changement est immédiat, **sans rechargement** : le workflow sélectionné, l'onglet, la comparaison, la vue expert, les filtres, les workflows chargés et les modifications en cours (avec l'historique annuler/rétablir) sont conservés.
+- **Priorité** : paramètre `lang=fr|en` dans l'URL (`#wf=…&tab=…&lang=en`, partageable) > choix mémorisé dans ce navigateur (`localStorage`, clé `wfv.lang`) > langue du navigateur.
+- Les **valeurs issues de vos fichiers** (noms, descriptions, settings, scripts, identifiants) ne sont jamais traduites. Les données de démonstration restent fictives et en français ; seuls le bandeau et la visite guidée sont traduits.
+- Les traductions anglaises sont en cours de relecture : n'hésitez pas à signaler les formulations à améliorer.
 
 ## Fonctionnalités
 
@@ -50,6 +60,7 @@ Un jeu d'exemple entièrement fictif est fourni dans [`fixtures/`](fixtures/) : 
 ### Navigateurs
 
 - **Chrome et Edge** (récents) : recommandés (sélecteur de dossier natif ; File System Access pour l'export optionnel).
+- Version testée : **Microsoft Edge** (test navigateur automatisé, headless, y compris l'interface anglaise).
 - Les autres navigateurs devraient fonctionner via le repli « dossier » (`webkitdirectory`) et le glisser-déposer, mais **Firefox et Safari n'ont pas été testés**.
 
 ## ⚠ Avertissement sur l'export
@@ -59,7 +70,7 @@ L'export produit un fichier JSON dans le même style que l'original, mais **le f
 ## Limites connues
 
 - Conçu d'après la structure d'exports observée ; d'autres versions du format peuvent afficher des informations partielles. Les workflows illisibles sont listés en erreur sans bloquer le reste.
-- Les règles du linter, les descriptions françaises des actions natives marquées « déduit du nom » et l'interprétation de `parentWorkflowIds` (liste des appelants) sont des heuristiques non confirmées.
+- Les règles du linter, les descriptions des actions natives marquées « déduit du nom » et l'interprétation de `parentWorkflowIds` (liste des appelants) sont des heuristiques non confirmées.
 - La coloration PowerShell est lexicale (pas d'analyse syntaxique complète).
 - Les séquences imbriquées ne sont pas gérées par l'édition.
 - Les très gros graphes sont limités à 50 nodes affichés ; l'interface n'est pas optimisée pour des milliers de workflows.
@@ -71,6 +82,7 @@ L'export produit un fichier JSON dans le même style que l'original, mais **le f
 index.html            page unique (CSP stricte, pied de page, version)
 src/                  modules JavaScript « classiques » (UMD) + style.css
   version.js          constante de version unique
+  i18n.js i18n-fr.js i18n-en.js   internationalisation (t(), pluriels, détection de la langue, dictionnaires embarqués)
   demo-data.js        données de démo générées depuis fixtures/ (npm run build:demo) ; demo-logic.js demo-ui.js
   model.js refs.js diff.js analysis.js inputs.js natives.js labels.js   modèle, références, diff, analyse
   scripts.js pshighlight.js                                             scripts PowerShell, coloration
@@ -78,7 +90,7 @@ src/                  modules JavaScript « classiques » (UMD) + style.css
   ui.js edit-ui.js inputs-ui.js insight-ui.js loader.js                 interface (DOM, textContent uniquement)
 fixtures/             jeu de données FICTIF (workflows, scripts, custom actions, CSV PS7)
 tools/gen-fixtures.js génère fixtures/ (valeurs inventées)
-tests/                tests node + test navigateur
+tests/                tests node (dont tests/i18n.test.js) + test navigateur
 docs/                 captures générées depuis les fixtures
 ```
 

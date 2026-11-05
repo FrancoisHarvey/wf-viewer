@@ -2,6 +2,7 @@
    Les scripts sont stockés bruts; l'analyse (param(), variables) est faite à la demande et mise en cache. */
 (function (root) {
   'use strict';
+  var t18 = (typeof require === 'function' ? require('./i18n.js') : root.WFV.i18n).t;
   var GUID_RE = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
 
   function guidOf(name) { var m = GUID_RE.exec(String(name).split('/').pop()); return m ? m[1].toLowerCase() : null; }
@@ -42,11 +43,11 @@
     text = String(text || '').replace(/^﻿/, '');
     var chunks = [];
     try { chunks = [JSON.parse(text)]; } catch (e) {
-      splitJsonValues(text).forEach(function (c) { try { chunks.push(JSON.parse(c)); } catch (e2) { res.errors.push('chunk illisible: ' + e2.message.slice(0, 80)); } });
+      splitJsonValues(text).forEach(function (c) { try { chunks.push(JSON.parse(c)); } catch (e2) { res.errors.push(t18('scripts.err.chunk', { msg: e2.message.slice(0, 80) })); } });
     }
     chunks.forEach(function (j) {
       var list = Array.isArray(j) ? j : j && Array.isArray(j.customActions) ? j.customActions : j && j.id && j.title ? [j] : null;
-      if (!list) { res.errors.push('aucune liste customActions'); return; }
+      if (!list) { res.errors.push(t18('scripts.err.noList')); return; }
       res.pages++; list.forEach(function (a) { if (a && typeof a === 'object' && a.id) res.actions.push(a); });
     });
     return res;

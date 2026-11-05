@@ -1,22 +1,24 @@
-/* natives.js - registre des actions natives (non CustomManagementAction): icône, libellé FR, résumé 1 ligne, champs formatés (pur, sans DOM).
+/* natives.js - registre des actions natives (non CustomManagementAction): icône, libellé, résumé 1 ligne, champs formatés (pur, sans DOM).
+   Libellés et résumés viennent du dictionnaire i18n (natives.label.<clé>, natives.sum.<clé>); chaque entrée fournit les variables du résumé.
    Chaque entrée porte `src`, l'origine de la description:
      'user' = confirmée par l'utilisateur ; 'data' = libellé/catalogue présent dans les données (categoryItemName, customDescription, schémas) ;
-     'name' = DÉDUITE du seul nom du type/des clés de settings => à valider (affichée "déduit du nom" dans l'UI).
+     'name' = DÉDUITE du seul nom du type/des clés de settings => à valider (badge "déduit du nom" dans l'UI).
    Les résumés sont des chaînes qui peuvent contenir des {{...}}: l'UI les rend en pastilles. */
 (function (root) {
   'use strict';
   var model = typeof require === 'function' ? require('./model.js') : root.WFV.model;
+  var t18 = (typeof require === 'function' ? require('./i18n.js') : root.WFV.i18n).t;
 
-  var OPS = { IsEqual: 'égal à', IsNotEqual: 'différent de', IsEmpty: 'est vide', IsNotEmpty: "n'est pas vide", Contains: 'contient', NotContains: 'ne contient pas', StartsWith: 'commence par', IsGreaterThen: 'supérieur à' };
+  var OPS = ['IsEqual', 'IsNotEqual', 'IsEmpty', 'IsNotEmpty', 'Contains', 'NotContains', 'StartsWith', 'IsGreaterThen'];
   var UNARY = { IsEmpty: 1, IsNotEmpty: 1 };
-  function opLabel(op) { return OPS[op] || op; }
+  function opLabel(op) { return OPS.indexOf(op) >= 0 ? t18('natives.op.' + op) : op; }
 
   // ---- helpers de valeurs ----
   function isBoolLike(v) { return v === true || v === false || v === 'true' || v === 'false'; }
-  function yn(v) { return v === true || v === 'true' ? 'oui' : v === false || v === 'false' ? 'non' : str(v); }
+  function yn(v) { return v === true || v === 'true' ? t18('natives.yes') : v === false || v === 'false' ? t18('natives.no') : str(v); }
   function str(v) {
     if (v === undefined || v === null || v === '') return '?';
-    if (Array.isArray(v)) return v.length ? v.map(str).join(', ') : '(vide)';
+    if (Array.isArray(v)) return v.length ? v.map(str).join(', ') : t18('natives.empty');
     if (typeof v === 'object') return JSON.stringify(v);
     return String(v);
   }
@@ -43,87 +45,81 @@
   }
   function condText(c) {
     if (!c || typeof c !== 'object') return str(c);
-    return str(c.property) + ' ' + opLabel(c.operator) + (UNARY[c.operator] ? '' : ' « ' + str(c.value) + ' »');
+    return str(c.property) + ' ' + opLabel(c.operator) + (UNARY[c.operator] ? '' : ' ' + t18('natives.q', { v: str(c.value) }));
   }
 
-  // ---- registre ----
-  function E(icon, label, src, sum) { return { icon: icon, label: label, src: src, sum: sum }; }
+  // ---- registre: E(icône, origine, variables du résumé) ----
+  function E(icon, src, vars) { return { icon: icon, src: src, vars: vars }; }
+  var U = function (s) { return { user: str(s.userPrincipalName) }; };
   var T = {
-    'SendEmailNotification': E('✉', 'Envoyer une notification par courriel', 'user', function (s) {
-      return 'Envoie un courriel à ' + str(s.to) + (count(s.bccAddresses) ? ' (cci : ' + str(s.bccAddresses) + ')' : '') + ' — objet : « ' + str(s.subject) + ' »'; }),
-    'CheckIfMailboxExists': E('📬', 'Vérifier si la boîte aux lettres existe', 'user', function (s) {
-      return 'Vérifie si la boîte aux lettres ' + str(s.mailbox) + ' existe' + (s.timeoutSeconds ? ' (délai max ' + dur(s.timeoutSeconds) + ')' : ''); }),
-    'RetrieveDataFromObject': E('🔎', 'Lire des propriétés d\'un objet', 'data', function (s) {
-      return 'Lit ' + (s.propertiesName ? 'les propriétés ' + str(s.propertiesName) : 'des propriétés') + ' de l\'objet ' + str(s.target) + ' ' + str(s.id); }),
-    'SetTeamPolicy': E('☎', 'Gérer une stratégie Teams', 'data', function (s) {
-      return 'Applique la stratégie Teams ' + str(s.typePolicy) + ' = ' + str(s.policyName) + ' à ' + str(s.user); }),
-    'AddSecurityGroupMember': E('➕', 'Ajouter au groupe de sécurité', 'data', function (s) { return 'Ajoute ' + str(s.member) + ' au groupe de sécurité ' + str(s.securityGroupId); }),
-    'RemoveSecurityGroupMember': E('➖', 'Retirer du groupe de sécurité', 'data', function (s) { return 'Retire ' + str(s.member) + ' du groupe de sécurité ' + str(s.securityGroupId); }),
-    'AddDistributionGroupMember': E('➕', 'Ajouter au groupe de distribution', 'data', function (s) { return 'Ajoute ' + str(s.member) + ' au groupe de distribution ' + str(s.groupId); }),
-    'RemoveDistributionGroupMember': E('➖', 'Retirer du groupe de distribution', 'name', function (s) { return 'Retire ' + str(s.member) + ' du groupe de distribution ' + str(s.groupId); }),
-    'ManageLicense': E('🪪', 'Gérer les licences', 'data', function (s) {
-      return 'Gère les licences de ' + str(s.userPrincipalName) + ' (' + count(s.selectedLicenses) + ' entrée(s) de licence sélectionnée(s), emplacement ' + str(s.usageLocation) + ')'; }),
-    'AssignLicense': E('🪪', 'Assigner des licences', 'name', function (s) { return 'Assigne ' + count(s.selectedLicenses) + ' entrée(s) de licence à ' + str(s.userPrincipalName) + ' (emplacement ' + str(s.usageLocation) + ')'; }),
-    'RemoveAllLicenses': E('🪪', 'Supprimer toutes les licences', 'data', function (s) { return 'Supprime toutes les licences de ' + str(s.userPrincipalName); }),
-    'UpdateSignInStatus': E('⛔', 'Bloquer / débloquer la connexion', 'data', function (s) { return 'Définit l\'état de connexion de ' + str(s.userPrincipalName) + ' (blockCredential : ' + yn(s.blockCredential) + ')'; }),
-    'RevokeUserSessions': E('🚪', 'Révoquer les sessions utilisateur', 'name', function (s) { return 'Révoque les sessions de ' + str(s.userPrincipalName); }),
-    'CreateHybridUserFlat': E('👤', 'Créer un utilisateur (on-premises)', 'name', function (s) { return 'Crée l\'utilisateur ' + str(s.displayName) + ' (' + str(s.samAccount) + ') dans l\'OU ' + str(s.organizationalUnit); }),
-    'CreateOnPremisesUserFlat': E('👤', 'Créer un utilisateur (on-premises)', 'name', function (s) { return 'Crée l\'utilisateur ' + str(s.displayName) + ' dans l\'OU ' + str(s.organizationalUnit); }),
-    'CreateOnCloudUser': E('👤', 'Créer un utilisateur (cloud)', 'data', function (s) { return 'Crée l\'utilisateur cloud ' + str(s.displayName) + ' (' + str(s.email) + ')'; }),
-    'SetLitigationHold': E('⚖', 'Gérer la conservation pour litige', 'data', function (s) { return 'Gère la conservation pour litige de ' + str(s.userPrincipalName) + ' (activée : ' + yn(s.litigationHoldEnabled) + ')'; }),
-    'EditUserPropertiesForWorkflow': E('✎', 'Modifier les propriétés utilisateur', 'data', function (s) {
-      var ks = Object.keys(s).filter(function (k) { return k !== 'userPrincipalName'; }); return 'Modifie ' + ks.length + ' propriété(s) de ' + str(s.userPrincipalName) + ' : ' + ks.join(', '); }),
-    'EnableDisableAccount': E('⏻', 'Activer / désactiver le compte', 'name', function (s) { return 'Définit l\'état du compte de ' + str(s.userPrincipalName) + ' (enabled : ' + yn(s.enabled) + ')'; }),
-    'BulkAddSharePointOwners': E('🗂', 'Ajouter des propriétaires SharePoint', 'name', function (s) { return 'Ajoute ' + str(s.owners) + ' comme propriétaire(s) de ' + str(s.target); }),
-    'UnlockUser': E('🔓', 'Déverrouiller l\'utilisateur', 'name', function (s) { return 'Déverrouille le compte de ' + str(s.userPrincipalName); }),
-    'RemoveAllAuthenticationMethods': E('🔑', 'Supprimer les méthodes d\'authentification', 'name', function (s) { return 'Supprime toutes les méthodes d\'authentification de ' + str(s.userPrincipalName); }),
-    'ManageOnPremisesPassword': E('🔑', 'Gérer le mot de passe local', 'data', function (s) { return 'Gère le mot de passe local de ' + str(s.userPrincipalName) + (s.forceChange !== undefined ? ' (changement forcé : ' + yn(s.forceChange) + ')' : ''); }),
-    'ManagePassword': E('🔑', 'Gérer le mot de passe', 'data', function (s) { return 'Gère le mot de passe de ' + str(s.userPrincipalName) + (s.forceChange !== undefined ? ' (changement forcé : ' + yn(s.forceChange) + ')' : '') + (s.neverExpires !== undefined ? ' (n\'expire jamais : ' + yn(s.neverExpires) + ')' : ''); }),
-    'ResetSyncUserPassword': E('🔑', 'Réinitialiser le mot de passe (utilisateur synchronisé)', 'name', function (s) { return 'Réinitialise le mot de passe de ' + str(s.userPrincipalName); }),
-    'MoveUserToOrganizationalUnit': E('📁', 'Déplacer vers une unité d\'organisation', 'data', function (s) { return 'Déplace ' + str(s.userPrincipalName) + ' vers l\'OU ' + str(s.destinationOrganizationalUnit); }),
-    'RemoveUser': E('🗑', 'Supprimer l\'utilisateur', 'data', function (s) { return 'Supprime l\'utilisateur ' + str(s.userPrincipalName); }),
-    'RemoveOnPremisesDistributionGroup': E('🗑', 'Supprimer un groupe de distribution (on-premises)', 'name', function (s) { return 'Supprime le groupe de distribution ' + str(s.distinguishedName); }),
-    'RemoveDistributionGroup': E('🗑', 'Supprimer un groupe de distribution', 'name', function (s) { return 'Supprime le groupe de distribution ' + str(s.groupId); }),
-    'RemoveOffice365Group': E('🗑', 'Supprimer un groupe Microsoft 365', 'name', function (s) { return 'Supprime le groupe Microsoft 365 ' + str(s.groupId); }),
-    'SetMultiFactorAuthState': E('🛡', 'Définir l\'état MFA', 'name', function (s) { return 'Définit l\'état MFA de ' + str(s.userPrincipalName) + ' : ' + str(s.strongAuthenticationRequirementsState); }),
-    'ResetMultiFactorAuthState': E('🛡', 'Réinitialiser le MFA', 'data', function (s) { return 'Réinitialise le MFA de ' + str(s.userPrincipalName); }),
-    'AddTags': E('🏷', 'Ajouter des tags', 'name', function (s) { return 'Ajoute le(s) tag(s) ' + str(s.tags) + ' à ' + str(s.userPrincipalName); }),
-    'RemoveTags': E('🏷', 'Retirer des tags', 'name', function (s) { return 'Retire le(s) tag(s) ' + str(s.tags) + ' de ' + str(s.userPrincipalName); }),
-    'CreateSecurityGroup': E('👥', 'Créer un groupe de sécurité', 'data', function (s) { return 'Crée le groupe de sécurité ' + str(s.displayName); }),
-    'UpdateSecurityGroup': E('👥', 'Mettre à jour un groupe de sécurité', 'name', function (s) { return 'Met à jour le groupe de sécurité ' + str(s.groupId) + (s.description ? ' (description : ' + str(s.description) + ')' : ''); }),
-    'CreateSharePointTeamModernSite': E('🗂', 'Créer un site d\'équipe SharePoint', 'name', function (s) { return 'Crée le site d\'équipe SharePoint ' + str(s.title) + ' (confidentialité : ' + str(s.privacy) + ')'; }),
-    'ResetPasscodeDeviceCommand': E('📱', 'Réinitialiser le code d\'accès d\'un appareil géré', 'name', function (s) { return 'Réinitialise le code d\'accès de l\'appareil géré ' + str(s.identifier); }),
-    'SetCvDeviceTag': E('📱', 'Définir un tag d\'appareil CoreView', 'name', function (s) { return 'Définit le tag d\'appareil ' + str(s.cvDeviceTag) + ' sur ' + str(s.deviceId); }),
-    'UnassignTeamsPhoneNumber': E('☎', 'Retirer le numéro de téléphone Teams', 'name', function (s) { return 'Retire le numéro de téléphone Teams de ' + str(s.userPrincipalName); }),
-    'AddMailboxPermission': E('📬', 'Ajouter une autorisation de boîte aux lettres', 'data', function (s) { return 'Ajoute une autorisation sur la boîte ' + str(s.mailbox) + ' pour ' + str(s.userPrincipalName) + ' (droit : ' + str(s.accessRight) + ')'; }),
-    'SetMailBoxCas': E('📬', 'Gérer les services de la boîte aux lettres', 'data', function (s) {
-      var on = ['activeSync', 'ews', 'imap', 'mapi', 'owa', 'pop'].map(function (k) { return k + ' ' + yn(s[k]); }); return 'Définit les services de ' + str(s.userPrincipalName) + ' : ' + on.join(', '); }),
-    'item::if-else': E('⑂', 'Condition (si / sinon)', 'data', function (s, n) {
+    'SendEmailNotification': E('✉', 'user', function (s) { return { to: str(s.to), bcc: count(s.bccAddresses) ? t18('natives.part.bcc', { v: str(s.bccAddresses) }) : '', subject: str(s.subject) }; }),
+    'CheckIfMailboxExists': E('📬', 'user', function (s) { return { mailbox: str(s.mailbox), timeout: s.timeoutSeconds ? t18('natives.part.timeout', { v: dur(s.timeoutSeconds) }) : '' }; }),
+    'RetrieveDataFromObject': E('🔎', 'data', function (s) { return { what: s.propertiesName ? t18('natives.part.props', { v: str(s.propertiesName) }) : t18('natives.part.someProps'), target: str(s.target), id: str(s.id) }; }),
+    'SetTeamPolicy': E('☎', 'data', function (s) { return { type: str(s.typePolicy), policy: str(s.policyName), user: str(s.user) }; }),
+    'AddSecurityGroupMember': E('➕', 'data', function (s) { return { member: str(s.member), group: str(s.securityGroupId) }; }),
+    'RemoveSecurityGroupMember': E('➖', 'data', function (s) { return { member: str(s.member), group: str(s.securityGroupId) }; }),
+    'AddDistributionGroupMember': E('➕', 'data', function (s) { return { member: str(s.member), group: str(s.groupId) }; }),
+    'RemoveDistributionGroupMember': E('➖', 'name', function (s) { return { member: str(s.member), group: str(s.groupId) }; }),
+    'ManageLicense': E('🪪', 'data', function (s) { return { user: str(s.userPrincipalName), n: count(s.selectedLicenses), loc: str(s.usageLocation) }; }),
+    'AssignLicense': E('🪪', 'name', function (s) { return { user: str(s.userPrincipalName), n: count(s.selectedLicenses), loc: str(s.usageLocation) }; }),
+    'RemoveAllLicenses': E('🪪', 'data', U),
+    'UpdateSignInStatus': E('⛔', 'data', function (s) { return { user: str(s.userPrincipalName), v: yn(s.blockCredential) }; }),
+    'RevokeUserSessions': E('🚪', 'name', U),
+    'CreateHybridUserFlat': E('👤', 'name', function (s) { return { name: str(s.displayName), sam: str(s.samAccount), ou: str(s.organizationalUnit) }; }),
+    'CreateOnPremisesUserFlat': E('👤', 'name', function (s) { return { name: str(s.displayName), ou: str(s.organizationalUnit) }; }),
+    'CreateOnCloudUser': E('👤', 'data', function (s) { return { name: str(s.displayName), email: str(s.email) }; }),
+    'SetLitigationHold': E('⚖', 'data', function (s) { return { user: str(s.userPrincipalName), v: yn(s.litigationHoldEnabled) }; }),
+    'EditUserPropertiesForWorkflow': E('✎', 'data', function (s) { var ks = Object.keys(s).filter(function (k) { return k !== 'userPrincipalName'; }); return { n: ks.length, user: str(s.userPrincipalName), keys: ks.join(', ') }; }),
+    'EnableDisableAccount': E('⏻', 'name', function (s) { return { user: str(s.userPrincipalName), v: yn(s.enabled) }; }),
+    'BulkAddSharePointOwners': E('🗂', 'name', function (s) { return { owners: str(s.owners), target: str(s.target) }; }),
+    'UnlockUser': E('🔓', 'name', U),
+    'RemoveAllAuthenticationMethods': E('🔑', 'name', U),
+    'ManageOnPremisesPassword': E('🔑', 'data', function (s) { return { user: str(s.userPrincipalName), force: s.forceChange !== undefined ? t18('natives.part.forceChange', { v: yn(s.forceChange) }) : '' }; }),
+    'ManagePassword': E('🔑', 'data', function (s) { return { user: str(s.userPrincipalName), force: s.forceChange !== undefined ? t18('natives.part.forceChange', { v: yn(s.forceChange) }) : '', never: s.neverExpires !== undefined ? t18('natives.part.neverExpires', { v: yn(s.neverExpires) }) : '' }; }),
+    'ResetSyncUserPassword': E('🔑', 'name', U),
+    'MoveUserToOrganizationalUnit': E('📁', 'data', function (s) { return { user: str(s.userPrincipalName), ou: str(s.destinationOrganizationalUnit) }; }),
+    'RemoveUser': E('🗑', 'data', U),
+    'RemoveOnPremisesDistributionGroup': E('🗑', 'name', function (s) { return { group: str(s.distinguishedName) }; }),
+    'RemoveDistributionGroup': E('🗑', 'name', function (s) { return { group: str(s.groupId) }; }),
+    'RemoveOffice365Group': E('🗑', 'name', function (s) { return { group: str(s.groupId) }; }),
+    'SetMultiFactorAuthState': E('🛡', 'name', function (s) { return { user: str(s.userPrincipalName), state: str(s.strongAuthenticationRequirementsState) }; }),
+    'ResetMultiFactorAuthState': E('🛡', 'data', U),
+    'AddTags': E('🏷', 'name', function (s) { return { tags: str(s.tags), user: str(s.userPrincipalName) }; }),
+    'RemoveTags': E('🏷', 'name', function (s) { return { tags: str(s.tags), user: str(s.userPrincipalName) }; }),
+    'CreateSecurityGroup': E('👥', 'data', function (s) { return { name: str(s.displayName) }; }),
+    'UpdateSecurityGroup': E('👥', 'name', function (s) { return { group: str(s.groupId), desc: s.description ? t18('natives.part.desc', { v: str(s.description) }) : '' }; }),
+    'CreateSharePointTeamModernSite': E('🗂', 'name', function (s) { return { title: str(s.title), privacy: str(s.privacy) }; }),
+    'ResetPasscodeDeviceCommand': E('📱', 'name', function (s) { return { id: str(s.identifier) }; }),
+    'SetCvDeviceTag': E('📱', 'name', function (s) { return { tag: str(s.cvDeviceTag), device: str(s.deviceId) }; }),
+    'UnassignTeamsPhoneNumber': E('☎', 'name', U),
+    'AddMailboxPermission': E('📬', 'data', function (s) { return { mailbox: str(s.mailbox), user: str(s.userPrincipalName), right: str(s.accessRight) }; }),
+    'SetMailBoxCas': E('📬', 'data', function (s) { return { user: str(s.userPrincipalName), list: ['activeSync', 'ews', 'imap', 'mapi', 'owa', 'pop'].map(function (k) { return k + ' ' + yn(s[k]); }).join(', ') }; }),
+    'item::if-else': E('⑂', 'data', function (s, n) {
       var cs = conditionsOf(n.raw.filter);
-      return (cs.length ? 'Si ' + condText(cs[0]) + (cs.length > 1 ? ' (+' + (cs.length - 1) + ' autre(s) condition(s))' : '') : 'Condition sans critère') + ' — branche VRAI : ' + n.trueBranch.length + ' action(s), FAUX : ' + n.falseBranch.length; }),
-    'item::sequence': E('▤', 'Séquence d\'actions', 'data', function (s, n) { return 'Regroupe ' + n.children.length + ' action(s)' + (conditionsOf(n.raw.filter).length ? ' — exécutées si ' + condText(conditionsOf(n.raw.filter)[0]) : ''); }),
-    'item::delay': E('⏱', 'Délai', 'data', function (s) { return 'Attend ' + dur(s.waitDuration) + ' (valeur ' + str(s.waitDuration) + ', unité supposée : secondes)'; }),
-    'item::stop': E('⏹', 'Arrêter le flux', 'data', function () { return 'Arrête le flux'; }),
-    'item::stopv2': E('⏹', 'Arrêter le flux (statut final)', 'data', function (s) { return 'Arrête le flux avec le statut final « ' + str(s.finalStatus) + ' »'; }),
-    'item::executenestedworkflow': E('↪', 'Exécuter un workflow imbriqué', 'data', function (s, n, ctx) {
-      var id = s.workflowId, nm = ctx && ctx.wfName && ctx.wfName(id);
-      var extra = Object.keys(s).filter(function (k) { return k !== 'workflowId' && k !== 'startAfterNDays'; });
-      return 'Exécute le workflow ' + (nm ? '« ' + nm + ' »' : str(id) + ' (hors lot)') + (Number(s.startAfterNDays) > 0 ? ', démarrage après ' + s.startAfterNDays + ' jour(s)' : '') + (extra.length ? ' — paramètres : ' + extra.join(', ') : ''); }),
-    'item::vtenant-check': E('🛰', 'V-Tenant scan', 'name', function (s) { return 'V-Tenant scan de ' + str(s.target) + ' ' + str(s.id) + (s.failWhenNotVerified !== undefined ? ' (failWhenNotVerified : ' + yn(s.failWhenNotVerified) + ')' : ''); }),
-    'item::owner-approval-timeout': E('✅', 'Demander une approbation (avec délai)', 'data', function (s) {
-      return 'Demande une approbation par courriel à ' + str(s.email) + ' — objet : « ' + str(s.subject) + ' », délai ' + dur(s.customTimeoutSeconds); }),
-    'http-request.get': E('🌐', 'Requête HTTP GET', 'data', function (s) { return 'GET ' + str(s.url); })
+      return { head: cs.length ? t18('natives.part.ifHead', { cond: condText(cs[0]), more: cs.length > 1 ? t18('natives.part.ifMore', { n: cs.length - 1 }) : '' }) : t18('natives.part.ifNone'), t: n.trueBranch.length, f: n.falseBranch.length }; }),
+    'item::sequence': E('▤', 'data', function (s, n) { var cs = conditionsOf(n.raw.filter); return { n: n.children.length, cond: cs.length ? t18('natives.part.seqCond', { c: condText(cs[0]) }) : '' }; }),
+    'item::delay': E('⏱', 'user', function (s) { return { dur: dur(s.waitDuration), raw: str(s.waitDuration) }; }), // durée en SECONDES: confirmé par l'utilisateur
+    'item::stop': E('⏹', 'data', function () { return {}; }),
+    'item::stopv2': E('⏹', 'data', function (s) { return { status: str(s.finalStatus) }; }),
+    'item::executenestedworkflow': E('↪', 'data', function (s, n, ctx) {
+      var id = s.workflowId, nm = ctx && ctx.wfName && ctx.wfName(id), extra = Object.keys(s).filter(function (k) { return k !== 'workflowId' && k !== 'startAfterNDays'; });
+      return { target: nm ? t18('natives.q', { v: nm }) : t18('natives.part.wfOut', { v: str(id) }), delay: Number(s.startAfterNDays) > 0 ? t18('natives.part.startAfter', { n: s.startAfterNDays }) : '', params: extra.length ? t18('natives.part.params', { v: extra.join(', ') }) : '' }; }),
+    'item::vtenant-check': E('🛰', 'name', function (s) { return { target: str(s.target), id: str(s.id), fw: s.failWhenNotVerified !== undefined ? t18('natives.part.failWhen', { v: yn(s.failWhenNotVerified) }) : '' }; }),
+    'item::owner-approval-timeout': E('✅', 'data', function (s) { return { email: str(s.email), subject: str(s.subject), dur: dur(s.customTimeoutSeconds) }; }),
+    'http-request.get': E('🌐', 'data', function (s) { return { url: str(s.url) }; })
   };
+  Object.keys(T).forEach(function (k) {
+    var e = T[k]; e.key = k;
+    Object.defineProperty(e, 'label', { get: function () { return t18('natives.label.' + k); }, enumerable: true });
+    e.sum = function (s, n, ctx) { return t18('natives.sum.' + k, e.vars(s, n, ctx)); };
+  });
 
-  // ---- libellés/formats de champs ----
-  var LABELS = { userPrincipalName: 'Utilisateur (UPN)', user: 'Utilisateur', member: 'Membre', owners: 'Propriétaires', groupId: 'Groupe (id)', securityGroupId: 'Groupe de sécurité (id)',
-    to: 'Destinataires', bccAddresses: 'Cci', subject: 'Objet', body: 'Corps', mailbox: 'Boîte aux lettres', timeoutSeconds: 'Délai max', customTimeoutSeconds: 'Délai max', waitDuration: 'Durée',
-    workflowId: 'Workflow', startAfterNDays: 'Démarrage après (jours)', target: 'Cible', id: 'Identifiant', propertiesName: 'Propriétés lues', finalStatus: 'Statut final', failWhenNotVerified: 'Échec si non vérifié',
-    usageLocation: 'Emplacement d\'utilisation', selectedLicenses: 'Licences sélectionnées', blockCredential: 'Blocage des identifiants', enabled: 'Activé', litigationHoldEnabled: 'Conservation pour litige activée',
-    forceChange: 'Changement forcé', neverExpires: 'N\'expire jamais', newPassword: 'Nouveau mot de passe', password: 'Mot de passe', firstName: 'Prénom', lastName: 'Nom', displayName: 'Nom affiché', email: 'Courriel',
-    organizationalUnit: 'OU', destinationOrganizationalUnit: 'OU de destination', tags: 'Tags', url: 'URL', ensureSuccessStatusCode: 'Exiger un code HTTP de succès', contentType: 'Type de contenu',
-    typePolicy: 'Type de stratégie', policyName: 'Stratégie', accessRight: 'Droit d\'accès', owner: 'Propriétaire', description: 'Description', domain: 'Domaine', company: 'Société', privacy: 'Confidentialité',
-    strongAuthenticationRequirementsState: 'État MFA', multiFactorAuthState: 'État MFA', distinguishedName: 'DN', title: 'Titre', alias: 'Alias', activeSync: 'ActiveSync', ews: 'EWS', imap: 'IMAP', mapi: 'MAPI', owa: 'OWA', pop: 'POP' };
+  // ---- libellés/formats de champs (clés techniques -> libellé traduit) ----
+  var LABEL_KEYS = ['userPrincipalName', 'user', 'member', 'owners', 'groupId', 'securityGroupId', 'to', 'bccAddresses', 'subject', 'body', 'mailbox', 'timeoutSeconds', 'customTimeoutSeconds', 'waitDuration', 'workflowId', 'startAfterNDays',
+    'target', 'id', 'propertiesName', 'finalStatus', 'failWhenNotVerified', 'usageLocation', 'selectedLicenses', 'blockCredential', 'enabled', 'litigationHoldEnabled', 'forceChange', 'neverExpires', 'newPassword', 'password', 'firstName', 'lastName',
+    'displayName', 'email', 'organizationalUnit', 'destinationOrganizationalUnit', 'tags', 'url', 'ensureSuccessStatusCode', 'contentType', 'typePolicy', 'policyName', 'accessRight', 'owner', 'description', 'domain', 'company', 'privacy',
+    'strongAuthenticationRequirementsState', 'multiFactorAuthState', 'distinguishedName', 'title', 'alias', 'activeSync', 'ews', 'imap', 'mapi', 'owa', 'pop'];
+  var LABELS = {}; LABEL_KEYS.forEach(function (k) { Object.defineProperty(LABELS, k, { get: function () { return t18('natives.field.' + k); }, enumerable: true }); });
   var DURATION_KEYS = { waitDuration: 1, timeoutSeconds: 1, customTimeoutSeconds: 1 };
   var LIST_KEYS = { to: 1, bccAddresses: 1, tags: 1, propertiesName: 1, owners: 1, selectedLicenses: 1 };
   var HIDE = { startAfterNDays: 0 };
@@ -134,7 +130,7 @@
       var v = s[k], kind = 'any', text = null;
       if (k === 'workflowId' && shortKey === 'item::executenestedworkflow') kind = 'workflow';
       else if (k === 'body' && typeof v === 'string') { kind = 'html'; text = htmlToText(v); }
-      else if (DURATION_KEYS[k] && (typeof v === 'number' || /^\d+$/.test(String(v)))) { kind = 'duration'; text = dur(v) + (k === 'waitDuration' ? ' (unité supposée : secondes)' : ''); }
+      else if (DURATION_KEYS[k] && (typeof v === 'number' || /^\d+$/.test(String(v)))) { kind = 'duration'; text = dur(v); }
       else if (isBoolLike(v)) { kind = 'bool'; text = yn(v); }
       else if (Array.isArray(v) && (LIST_KEYS[k] || v.every(function (x) { return typeof x === 'string'; }))) kind = 'list';
       return { key: k, label: LABELS[k] || k, value: v, kind: kind, text: text };
@@ -167,10 +163,10 @@
     if (reg) { try { summary = reg.sum(s, n, ctx); } catch (e) { summary = null; } }
     if (!summary) {
       var ks = Object.keys(s).slice(0, 4).map(function (k) { return k + ' = ' + str(s[k]); });
-      summary = (n.raw.customDescription || '') || (ks.length ? ks.join(' ; ') : 'Action native ' + genericLabel(n));
+      summary = (n.raw.customDescription || '') || (ks.length ? ks.join(' ; ') : t18('natives.generic', { label: genericLabel(n) }));
     }
     var notes = [];
-    if (key === 'CheckIfMailboxExists') notes.push("D'après l'utilisateur : sert à attendre la fin de création de la boîte aux lettres.");
+    if (key === 'CheckIfMailboxExists') notes.push(t18('natives.note.mailbox'));
     return { native: true, known: known, key: key, icon: reg ? reg.icon : '⚙', label: reg ? reg.label : genericLabel(n), src: reg ? reg.src : 'name',
       summary: summary, fields: fieldsOf(key, s).filter(function (f) { return HIDE[f.key] === undefined || Number(f.value) > 0; }), outputs: outputsOf(n), notes: notes };
   }

@@ -4,22 +4,26 @@
 (function (root) {
   'use strict';
   var model = typeof require === 'function' ? require('./model.js') : root.WFV.model;
+  var t18 = (typeof require === 'function' ? require('./i18n.js') : root.WFV.i18n).t;
+  // Objet dont les valeurs sont traduites à la lecture (suit la langue active)
+  function lazyMap(keys, prefix) { var o = {}; keys.forEach(function (k) { Object.defineProperty(o, k, { get: function () { return t18(prefix + k); }, enumerable: true }); }); return o; }
 
   var KINDS = {
-    text: { icon: 'Aa', label: 'Texte' },
-    enum: { icon: '▾', label: 'Liste de valeurs' },
-    yesno: { icon: '✓✗', label: 'Oui / Non' },
-    boolean: { icon: '◐', label: 'Booléen' },
-    integer: { icon: '#', label: 'Nombre' },
-    number: { icon: '#', label: 'Nombre' },
-    datetime: { icon: '📅', label: 'Date-heure' },
-    password: { icon: '🔒', label: 'Mot de passe' },
-    customlist: { icon: '☰', label: 'Liste personnalisée' },
-    datasource: { icon: '⛁', label: 'Source de données' },
-    target: { icon: '◎', label: 'Cible' }
+    text: { icon: 'Aa' },
+    enum: { icon: '▾' },
+    yesno: { icon: '✓✗' },
+    boolean: { icon: '◐' },
+    integer: { icon: '#' },
+    number: { icon: '#' },
+    datetime: { icon: '📅' },
+    password: { icon: '🔒' },
+    customlist: { icon: '☰' },
+    datasource: { icon: '⛁' },
+    target: { icon: '◎' }
   };
+  Object.keys(KINDS).forEach(function (k) { Object.defineProperty(KINDS[k], 'label', { get: function () { return t18('inputs.kind.' + k); }, enumerable: true }); });
   var YESNO = /^(oui|non|yes|no)$/i;
-  var TARGETS = { User: 'Utilisateur', Mailbox: 'Boîte aux lettres', SecurityGroup: 'Groupe de sécurité', DistributionGroup: 'Groupe de distribution' };
+  var TARGETS = lazyMap(['User', 'Mailbox', 'SecurityGroup', 'DistributionGroup'], 'inputs.target.');
 
   function classify(name, p, required) {
     p = p && typeof p === 'object' ? p : {};
@@ -53,7 +57,7 @@
   function parseInputs(wf) {
     var s = model.parseJsonField(wf.data.inputSchema);
     if (!s) return { ok: true, inputs: [], raw: null };
-    if (s.__parseError || !s.properties || typeof s.properties !== 'object') return { ok: false, inputs: [], error: s.__parseError || 'pas de properties', raw: s };
+    if (s.__parseError || !s.properties || typeof s.properties !== 'object') return { ok: false, inputs: [], error: s.__parseError || t18('inputs.err.noProps'), raw: s };
     var req = {}; (Array.isArray(s.required) ? s.required : []).forEach(function (k) { req[k] = true; });
     return { ok: true, raw: s, inputs: Object.keys(s.properties).map(function (k) { return classify(k, s.properties[k], req[k]); }), requiredMissing: Object.keys(req).filter(function (k) { return !(k in s.properties); }) };
   }
@@ -64,15 +68,12 @@
   //   integer/boolean: type seul | datetime: x-cv-ui, format | password: x-cv-protected, x-cv-password, x-cv-tooltip, passwordRules
   //   target: inputTargetType = User | Mailbox | SecurityGroup | DistributionGroup
   var SELECTABLE = ['text', 'enum', 'yesno', 'boolean', 'integer', 'datetime', 'password', 'customlist', 'datasource', 'target'];
-  var TARGET_TYPES = { User: 'Utilisateur', Mailbox: 'Boîte aux lettres', SecurityGroup: 'Groupe de sécurité', DistributionGroup: 'Groupe de distribution' };
+  var TARGET_TYPES = lazyMap(['User', 'Mailbox', 'SecurityGroup', 'DistributionGroup'], 'inputs.target.');
   var YESNO_FORMS = [['Non', 'Oui'], ['NON', 'OUI'], ['NO', 'YES']];
   var MANAGED = ['type', 'enum', 'format', 'x-cv-ui', 'x-cv-custom-list', 'x-cv-data-source', 'x-cv-data-source-filterable', 'x-cv-protected', 'x-cv-password', 'x-cv-tooltip', 'passwordRules', 'inputTargetType'];
   // Certitude des formes: false = déduction partielle (signalée dans l'UI)
   var CERTAINTY = { text: true, enum: true, yesno: false, boolean: true, integer: true, datetime: true, password: false, customlist: true, datasource: true, target: true };
-  var UNCERTAIN_NOTES = {
-    yesno: 'Aucun marqueur distinct dans le schéma: un « Oui / Non » est une liste de valeurs à 2 entrées; trois graphies existent dans les exports (Non/Oui, NON/OUI, NO/YES).',
-    password: 'Deux variantes de règles de mot de passe existent (requiredigits ou requireNumbers, specifyLength optionnel): l\'éditeur conserve les clés présentes.'
-  };
+  var UNCERTAIN_NOTES = lazyMap(['yesno', 'password'], 'inputs.note.');
   function defaultPasswordRules() { return { specifyLength: true, minLength: 12, requireUppercase: true, requiredigits: true, requireSpecialChars: true, specialCharsConfig: { useDefaultChars: true, customChars: '' }, isEditable: true }; }
   function isYesNo(v) { return Array.isArray(v) && v.length === 2 && v.every(function (x) { return YESNO.test(String(x)); }); }
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
@@ -92,21 +93,21 @@
   // -> {prop, lost:[messages], needs: 'enum'|'customList'|'dataSource'|null, certain}
   function convertProp(prop, kind, opts) {
     opts = opts || {}; var p = prop && typeof prop === 'object' && !Array.isArray(prop) ? prop : {}, lost = [], needs = null;
-    if (SELECTABLE.indexOf(kind) < 0) return { error: 'catégorie inconnue: ' + kind };
+    if (SELECTABLE.indexOf(kind) < 0) return { error: t18('inputs.err.unknownKind', { kind: kind }) };
     var want = desiredKeys(kind, p, opts), map = {}; want.forEach(function (w) { map[w[0]] = w[1]; });
     var oldKind = classify('x', p, false).kind;
     Object.keys(p).forEach(function (k) {
       if (MANAGED.indexOf(k) < 0) return;
       if (!Object.prototype.hasOwnProperty.call(map, k)) {
-        if (k === 'enum') lost.push('Liste de valeurs supprimée (' + (Array.isArray(p.enum) ? p.enum.length : 0) + ' valeur(s))');
-        else if (k === 'x-cv-custom-list') lost.push('Liste personnalisée supprimée'); else if (k === 'x-cv-data-source') lost.push('Source de données supprimée'); else if (k === 'x-cv-data-source-filterable') { /* suit la source */ }
-        else if (k === 'passwordRules') lost.push('Règles de mot de passe supprimées'); else if (k === 'x-cv-protected' || k === 'x-cv-password') { /* suit le mot de passe */ } else if (k === 'x-cv-tooltip') lost.push('Tooltip supprimé');
-        else if (k === 'format' || k === 'x-cv-ui') lost.push('Format de date supprimé');
-      } else if (k === 'type' && p.type !== map.type) lost.push('Type JSON modifié (' + p.type + ' → ' + map.type + ')');
-      else if (k === 'inputTargetType' && p[k] !== map[k] && p[k] !== undefined && p[k] !== 'noTarget') lost.push('Cible modifiée (' + p[k] + ' → ' + map[k] + ')');
-      else if (k === 'enum' && JSON.stringify(p.enum) !== JSON.stringify(map.enum)) lost.push('Valeurs de la liste remplacées');
+        if (k === 'enum') lost.push(t18('inputs.lost.enum', { n: Array.isArray(p.enum) ? p.enum.length : 0 }));
+        else if (k === 'x-cv-custom-list') lost.push(t18('inputs.lost.customList')); else if (k === 'x-cv-data-source') lost.push(t18('inputs.lost.dataSource')); else if (k === 'x-cv-data-source-filterable') { /* suit la source */ }
+        else if (k === 'passwordRules') lost.push(t18('inputs.lost.rules')); else if (k === 'x-cv-protected' || k === 'x-cv-password') { /* suit le mot de passe */ } else if (k === 'x-cv-tooltip') lost.push(t18('inputs.lost.tooltip'));
+        else if (k === 'format' || k === 'x-cv-ui') lost.push(t18('inputs.lost.dateFormat'));
+      } else if (k === 'type' && p.type !== map.type) lost.push(t18('inputs.lost.type', { from: p.type, to: map.type }));
+      else if (k === 'inputTargetType' && p[k] !== map[k] && p[k] !== undefined && p[k] !== 'noTarget') lost.push(t18('inputs.lost.target', { from: p[k], to: map[k] }));
+      else if (k === 'enum' && JSON.stringify(p.enum) !== JSON.stringify(map.enum)) lost.push(t18('inputs.lost.enumReplaced'));
     });
-    if (Object.prototype.hasOwnProperty.call(p, 'default') && (kind === 'integer' && typeof p.default !== 'number' || kind === 'boolean' && typeof p.default !== 'boolean' || (kind === 'enum' || kind === 'yesno') && Array.isArray(map.enum) && map.enum.indexOf(p.default) < 0)) lost.push('La valeur par défaut existante peut devenir incompatible');
+    if (Object.prototype.hasOwnProperty.call(p, 'default') && (kind === 'integer' && typeof p.default !== 'number' || kind === 'boolean' && typeof p.default !== 'boolean' || (kind === 'enum' || kind === 'yesno') && Array.isArray(map.enum) && map.enum.indexOf(p.default) < 0)) lost.push(t18('inputs.lost.default'));
     if (oldKind === kind && !lost.length && kind !== 'target') { /* inchangé */ }
     var out = {}, used = {};
     Object.keys(p).forEach(function (k) { if (MANAGED.indexOf(k) < 0) out[k] = p[k]; else if (Object.prototype.hasOwnProperty.call(map, k)) { out[k] = map[k]; used[k] = 1; } });
@@ -128,12 +129,12 @@
 
   // Validation d'un nom d'input. Retourne {error, warning}. props: objet des propriétés; except: nom actuel (renommage).
   function validateName(name, props, except) {
-    if (typeof name !== 'string' || name === '') return { error: 'le nom est vide' };
-    if (name !== name.trim()) return { error: 'le nom ne doit pas commencer ni finir par un espace' };
-    if (/[{}]|::/.test(name)) return { error: 'les caractères « { », « } » et « :: » sont interdits (ils cassent la syntaxe des références)' };
+    if (typeof name !== 'string' || name === '') return { error: t18('inputs.name.empty') };
+    if (name !== name.trim()) return { error: t18('inputs.name.space') };
+    if (/[{}]|::/.test(name)) return { error: t18('inputs.name.chars') };
     var low = name.toLowerCase(), clash = Object.keys(props || {}).find(function (k) { return k !== except && k.toLowerCase() === low; });
-    if (clash) return { error: clash === name ? 'un input « ' + name + ' » existe déjà' : 'collision (insensible à la casse) avec « ' + clash + ' »' };
-    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) return { warning: 'le nom ne respecte pas [A-Za-z_][A-Za-z0-9_]* (compatibilité côté CoreView non vérifiée)' };
+    if (clash) return { error: clash === name ? t18('inputs.name.exists', { name: name }) : t18('inputs.name.collision', { name: clash }) };
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) return { warning: t18('inputs.name.pattern') };
     return {};
   }
 

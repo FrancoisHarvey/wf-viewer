@@ -248,3 +248,7 @@ table.inputs-edit input[type=text], table.inputs-edit select { min-width: 7em; m
 .tour h3 { margin: 0; font-size: 14px; } .tourhead { display: flex; justify-content: space-between; align-items: center; gap: 8px; } .tour p { margin: 6px 0; } .tourfoot { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; } .tourfoot .muted { margin-right: auto; }
 .tour:focus { outline: 2px solid var(--focus); }
 .tour-target { outline: 3px solid var(--focus) !important; outline-offset: 2px; }
+/* sélecteur de langue (FR / EN) */
+.lang-toggle { display: inline-flex; gap: 6px; align-items: center; margin-left: 8px; font-size: 0.9em; }
+.lang-toggle select { padding: 2px 6px; }
+@media (max-width: 760px) { .lang-toggle { margin-left: 0; } }

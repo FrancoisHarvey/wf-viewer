@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const model = require('../src/model.js');
 const S = require('../src/scripts.js');
+require('../src/i18n.js').setLang('fr'); // les tests fixent explicitement la langue (pas de dépendance à l'environnement)
 
 const DATA = process.env.WFV_DATA ? path.resolve(process.env.WFV_DATA) : path.join(__dirname, '..', 'fixtures');
 

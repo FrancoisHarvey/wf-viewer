@@ -2,6 +2,7 @@
 (function (root) {
   'use strict';
   var model = typeof require === 'function' ? require('./model.js') : root.WFV.model;
+  var t18 = (typeof require === 'function' ? require('./i18n.js') : root.WFV.i18n).t;
 
   var CONTROL_NO_OUTPUT = { 'item::sequence': 1, 'item::if-else': 1, 'item::stop': 1, 'item::stopv2': 1, 'item::delay': 1, 'item::vtenant-check': 1, 'item::owner-approval-timeout': 1 };
 
@@ -19,19 +20,19 @@
       var t = o.token, loc = { node: o.node, where: o.where, token: t };
       if (t.malformed) { malformed.push(loc); return; }
       if (t.kind === 'input') {
-        var key = t.system ? '(système) ' + t.param : t.param;
+        var key = t.system ? t18('analysis.system', { name: t.param }) : t.param;
         var v = variables[key] || (variables[key] = { param: t.param, system: !!t.system, count: 0, uses: [] });
         v.count++; v.uses.push(loc);
       }
       t.fns.forEach(function (f) { var e = fns[f.name] || (fns[f.name] = { name: f.name, count: 0, uses: [] }); e.count++; e.uses.push(loc); });
       if (t.kind === 'action') {
         var target = wf.uidMap[t.uid];
-        if (!target) broken.push({ node: o.node, where: o.where, token: t, reason: 'uid absent du workflow' });
+        if (!target) broken.push({ node: o.node, where: o.where, token: t, code: 'missing', reason: t18('analysis.reason.missing') });
         else {
           referencedUids[t.uid] = (referencedUids[t.uid] || 0) + 1;
           var uorder = o.node ? o.node.order : -1;
-          if (target === o.node) broken.push({ node: o.node, where: o.where, token: t, reason: 'auto-référence' });
-          else if (target.order > uorder) broken.push({ node: o.node, where: o.where, token: t, reason: 'uid défini APRÈS son usage (' + target.path + ')' });
+          if (target === o.node) broken.push({ node: o.node, where: o.where, token: t, code: 'self', reason: t18('analysis.reason.self') });
+          else if (target.order > uorder) broken.push({ node: o.node, where: o.where, token: t, code: 'after', reason: t18('analysis.reason.after', { path: target.path }) });
         }
       }
     });

@@ -2,6 +2,7 @@
    Format UMD "classique": fonctionne via <script> (window.WFV.refs) et via require() sous node. */
 (function (root) {
   'use strict';
+  var t18 = (typeof require === 'function' ? require('./i18n.js') : root.WFV.i18n).t;
   var FN_RE = /^(\w+)\((.*)\)$/;
 
   function parseInner(inner) {
@@ -39,7 +40,7 @@
       var raw = end >= 0 && end - p < 400 ? str.slice(p, end + 2) : str.slice(p, p + 80);
       var inner = raw.replace(/^\{\{/, '').replace(/\}\}$/, '');
       var mt = parseInner(inner); mt.raw = raw; mt.index = p; mt.malformed = true;
-      mt.reason = end < 0 ? 'accolade fermante manquante' : 'accolades imbriquées/déséquilibrées dans le token';
+      mt.reasonKey = end < 0 ? 'refs.reason.unclosed' : 'refs.reason.unbalanced'; mt.reason = t18(mt.reasonKey);
       out.push(mt);
     }
     out.sort(function (a, b) { return a.index - b.index; });
